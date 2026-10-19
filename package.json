@@ -1,0 +1,73 @@
+{
+  "name": "rootcap",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A privacy-first, self-hosted captcha alternative powered by proof-of-work.",
+  "license": "MIT",
+  "homepage": "https://rootcap.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kirasync2748/rootcap.git"
+  },
+  "bugs": "https://github.com/kirasync2748/rootcap/issues",
+  "keywords": [
+    "captcha",
+    "proof-of-work",
+    "privacy",
+    "self-hosted",
+    "widget",
+    "human-verification",
+    "web-worker",
+    "zero-dependency",
+    "stateless",
+    "no-tracking"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "./dist/core/index.js",
+  "types": "./dist/core/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./widget": {
+      "types": "./dist/widget/widget.d.ts",
+      "import": "./dist/widget/widget.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:types": "tsc -p tsconfig.lib.json",
+    "start": "node server.mjs",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepublishOnly": "npm run build:lib && npm run build:types"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.13.0",
+    "prettier": "^3.4.0",
+    "sass": "^1.83.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.20.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.12"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true,
+    "esbuild@0.25.12": true
+  }
+}

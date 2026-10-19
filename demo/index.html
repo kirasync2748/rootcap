@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rootcap demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f7fbf9;
+        color: #0a1f17;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #dce8e2;
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 420px;
+        width: 100%;
+        box-shadow:
+          0 4px 12px rgba(10, 31, 23, 0.08),
+          0 20px 50px rgba(10, 31, 23, 0.1);
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 4px;
+      }
+      p {
+        color: #3a4d45;
+        font-size: 0.92rem;
+        margin-bottom: 24px;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #3a4d45;
+        margin-bottom: 8px;
+      }
+      input {
+        width: 100%;
+        padding: 13px 16px;
+        border: 1.5px solid #dce8e2;
+        border-radius: 10px;
+        font-size: 1rem;
+        margin-bottom: 20px;
+      }
+      input:focus {
+        outline: none;
+        border-color: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+      }
+      button {
+        width: 100%;
+        padding: 13px;
+        border: none;
+        border-radius: 10px;
+        background: #059669;
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #047857;
+      }
+      .result {
+        margin-top: 20px;
+        padding: 16px;
+        background: #d1fae5;
+        border-radius: 10px;
+        border: 1px solid #059669;
+      }
+      .result code {
+        display: block;
+        font-family: monospace;
+        font-size: 0.78rem;
+        color: #3a4d45;
+        word-break: break-all;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>rootcap demo</h1>
+      <p>A minimal form protected by rootcap proof-of-work captcha.</p>
+      <form id="form">
+        <label for="name">Name</label>
+        <input id="name" type="text" placeholder="Your name" required />
+        <label>Verification</label>
+        <rootcap-widget
+          data-scope="demo"
+          name="rootcap-token"
+          style="margin-bottom: 20px; display: block"
+        ></rootcap-widget>
+        <button type="submit">Submit</button>
+      </form>
+      <div class="result" id="result" hidden>
+        <strong>Token received</strong>
+        <code id="token"></code>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

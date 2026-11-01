@@ -1,6 +1,6 @@
 {
   "name": "rootcap",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "A privacy-first, self-hosted captcha alternative powered by proof-of-work.",
   "license": "MIT",
@@ -53,21 +53,25 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "npm run build:lib && npm run build:types"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run build:lib && npm run build:types",
+    "prepack": "npm run build:lib && npm run build:types"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
-    "@types/node": "^24.0.0",
-    "eslint": "^10.13.0",
-    "prettier": "^3.4.0",
-    "sass": "^1.83.0",
-    "typescript": "^5.7.0",
-    "typescript-eslint": "^8.20.0",
-    "vite": "^6.0.0",
-    "vitest": "^4.1.12"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "sass": "^1.107.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "allowScripts": {
     "@parcel/watcher@2.6.0": true,
-    "esbuild@0.25.12": true
+    "fsevents@2.3.3": true
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }

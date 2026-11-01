@@ -25,7 +25,14 @@ export function leadingZeroBits(hash: Buffer): number {
  * The hash input is the UTF-8 encoding of `${salt}${nonce}`.
  */
 export function verifySolution(salt: string, nonce: number, difficulty: number): boolean {
-  if (!Number.isFinite(nonce) || nonce < 0) return false;
+  if (
+    !Number.isSafeInteger(nonce) ||
+    nonce < 0 ||
+    !Number.isInteger(difficulty) ||
+    difficulty < 1 ||
+    difficulty > 256
+  )
+    return false;
   const hash = createHash("sha256").update(`${salt}${nonce}`).digest();
   return leadingZeroBits(hash) >= difficulty;
 }

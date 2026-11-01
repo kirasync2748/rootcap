@@ -59,6 +59,16 @@ export function generateChallenge(secret: string, opts: ChallengeOptions = {}): 
   const count = opts.count ?? 50;
   const difficulty = opts.difficulty ?? 4;
   const expiresMs = opts.expiresMs ?? 600_000;
+  if (!Number.isSafeInteger(count) || count < 1 || count > 1000)
+    throw new RangeError("count must be an integer from 1 to 1000");
+  if (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 256)
+    throw new RangeError("difficulty must be an integer from 1 to 256");
+  if (
+    !Number.isSafeInteger(expiresMs) ||
+    expiresMs <= 0 ||
+    !Number.isSafeInteger(Date.now() + expiresMs)
+  )
+    throw new RangeError("expiresMs must be a positive safe lifetime");
   const seed = randomBytes(32).toString("hex");
   const iat = Date.now();
   const exp = iat + expiresMs;
@@ -109,7 +119,22 @@ export function validateChallenge(
     scope?: string;
   }>(secret, b.token);
 
-  if (!payload) return { success: false, reason: "invalid_token" };
+  if (
+    !payload ||
+    typeof payload.seed !== "string" ||
+    !/^[a-f0-9]{64}$/.test(payload.seed) ||
+    !Number.isSafeInteger(payload.count) ||
+    payload.count < 1 ||
+    payload.count > 1000 ||
+    !Number.isInteger(payload.difficulty) ||
+    payload.difficulty < 1 ||
+    payload.difficulty > 256 ||
+    !Number.isSafeInteger(payload.exp) ||
+    !Number.isSafeInteger(payload.iat) ||
+    payload.exp <= payload.iat ||
+    (payload.scope !== undefined && typeof payload.scope !== "string")
+  )
+    return { success: false, reason: "invalid_token" };
   if (Date.now() >= payload.exp) return { success: false, reason: "expired" };
   if (opts.scope !== undefined && payload.scope !== opts.scope) {
     return { success: false, reason: "scope_mismatch" };
@@ -120,7 +145,7 @@ export function validateChallenge(
 
   for (let i = 0; i < payload.count; i++) {
     const sol = b.solutions[i];
-    if (typeof sol !== "number" || !Number.isFinite(sol)) {
+    if (typeof sol !== "number" || !Number.isSafeInteger(sol) || sol < 0) {
       return { success: false, reason: "invalid_solution" };
     }
     const salt = deriveSalt(payload.seed, i);
@@ -131,6 +156,12 @@ export function validateChallenge(
 
   const now = Date.now();
   const tokenTtlMs = opts.tokenTtlMs ?? 1_200_000;
+  if (
+    !Number.isSafeInteger(tokenTtlMs) ||
+    tokenTtlMs <= 0 ||
+    !Number.isSafeInteger(now + tokenTtlMs)
+  )
+    throw new RangeError("tokenTtlMs must be a positive safe lifetime");
   const redeemToken = signJWT(secret, {
     seed: payload.seed,
     type: "redeem",
@@ -150,10 +181,15 @@ export function validateChallenge(
 /**
  * Verify a previously issued redeem token.
  */
-export function verifyToken(secret: string, token: string): boolean {
-  const payload = verifyJWT<{ type?: string; exp: number }>(secret, token);
+export function verifyToken(
+  secret: string,
+  token: string,
+  opts: Pick<VerifyOptions, "scope"> = {},
+): boolean {
+  const payload = verifyJWT<{ type?: string; exp: number; scope?: string }>(secret, token);
   if (!payload) return false;
   if (payload.type !== "redeem") return false;
-  if (Date.now() >= payload.exp) return false;
+  if (!Number.isSafeInteger(payload.exp) || Date.now() >= payload.exp) return false;
+  if (opts.scope !== undefined && payload.scope !== opts.scope) return false;
   return true;
 }

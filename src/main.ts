@@ -49,7 +49,9 @@ function navigate() {
 
   if (location.hash) {
     requestAnimationFrame(() => {
-      document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById(decodeURIComponent(location.hash.slice(1)))
+        ?.scrollIntoView({ behavior: "smooth" });
     });
   } else {
     window.scrollTo(0, 0);
@@ -61,13 +63,15 @@ function navigate() {
 // SPA link interception
 document.addEventListener("click", (e) => {
   const link = (e.target as HTMLElement).closest("a");
-  if (!link || link.origin !== location.origin) return;
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+    return;
+  if (!link || link.hasAttribute("download") || link.origin !== location.origin) return;
   if (link.hasAttribute("target")) return;
   if (link.dataset.nospa !== undefined) return;
   // Same-page hash link — let the browser scroll natively
   if (link.pathname === location.pathname && link.hash) return;
   e.preventDefault();
-  history.pushState(null, "", link.pathname + link.hash);
+  history.pushState(null, "", link.pathname + link.search + link.hash);
   navigate();
 });
 

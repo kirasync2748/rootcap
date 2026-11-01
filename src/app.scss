@@ -1127,3 +1127,95 @@ a {
     gap: 56px;
   }
 }
+
+// Release 1.1: clearer hierarchy, keyboard focus, and reduced motion.
+:root {
+  --bg: #f8faf7;
+  --primary: #166449;
+  --primary-dark: #104d38;
+  --muted: #53665c;
+  --maxw: 1160px;
+}
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 5px;
+}
+.skip-link {
+  position: fixed;
+  top: -80px;
+  left: 16px;
+  z-index: 200;
+  background: var(--ink);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  &:focus {
+    top: 12px;
+  }
+}
+.hero {
+  background: radial-gradient(ellipse at 80% 15%, #dcebdc 0, transparent 55%), var(--bg);
+}
+.hero-title {
+  letter-spacing: -0.065em;
+  line-height: 1.04;
+}
+.release-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid #c7dbce;
+  border-radius: 30px;
+  padding: 7px 16px;
+  background: #fff9;
+  font-size: 0.8rem;
+  span {
+    color: var(--primary);
+  }
+}
+.install-command {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 380px;
+  margin: 28px auto 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  code {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+  }
+  > span {
+    color: var(--muted);
+  }
+  button {
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--primary-dark);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+}
+.feature-card {
+  border-top: 3px solid #b6d8c0;
+}
+.demo-form {
+  box-shadow: var(--shadow-lg);
+  border: 1px solid #c7dbce;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

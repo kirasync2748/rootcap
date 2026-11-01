@@ -3,8 +3,10 @@ import "rootcap/widget";
 
 document.getElementById("form")?.addEventListener("submit", (e) => {
   e.preventDefault();
-  const widget = document.querySelector("rootcap-widget");
-  const token = widget?.shadowRoot?.querySelector<HTMLInputElement>(".rc-token")?.value;
+
+  const token = new FormData(document.getElementById("form") as HTMLFormElement)
+    .get("rootcap-token")
+    ?.toString();
   if (!token) {
     alert("Please complete the verification first.");
     return;

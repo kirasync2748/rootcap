@@ -7,7 +7,7 @@
 # from a single Node process (server.mjs). Everything is stateless — no
 # database or volume is required.
 
-FROM node:24-slim AS build
+FROM node:26.13.0-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -18,7 +18,7 @@ COPY . .
 # empties it), so the site output is set aside before building the library.
 RUN npm run build && cp -r dist site && npm run build:lib
 
-FROM node:24-slim AS runtime
+FROM node:26.13.0-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000

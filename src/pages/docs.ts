@@ -184,7 +184,8 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
             </tbody>
           </table>
 
-          <h3>verifyToken(secret, token)</h3>
+          <h3>verifyToken(secret, token, options?)</h3>
+          <p>Pass <code>{ scope: "signup" }</code> to enforce the redemption scope. Tokens are reusable until expiry; track consumed tokens in your application if you need one-time use. Call the widget’s <code>reset()</code> method to clear verification.</p>
           <p>Validates a previously issued redeem token. Returns <code>true</code> or <code>false</code>.</p>
           <pre class="code-block" data-file="server.ts"><code><span class="c-key">const</span> ok = verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>]);
 <span class="c-key">if</span> (!ok) <span class="c-key">return</span> res.status(<span class="c-str">403</span>).json({ error: <span class="c-str">"captcha failed"</span> });</code></pre>

@@ -81,7 +81,13 @@ function sendJson(res, status, body) {
 function readBody(req) {
   return new Promise((resolve) => {
     let data = "";
-    req.on("data", (chunk) => (data += chunk));
+    let size = 0;
+    req.on("error", () => resolve(null));
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size <= 65536) data += chunk;
+      else resolve(null);
+    });
     req.on("end", () => {
       try {
         resolve(data ? JSON.parse(data) : {});
@@ -117,7 +123,20 @@ function serveStatic(pathname, res) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+  } catch {
+    sendJson(res, 400, { error: "invalid_url" });
+    return;
+  }
+  const isVerify = pathname === "/api/verify";
+  const allowed = isVerify ? "POST" : "GET, HEAD";
+  if (isVerify ? req.method !== "POST" : req.method !== "GET" && req.method !== "HEAD") {
+    res.setHeader("Allow", allowed);
+    sendJson(res, 405, { error: "method_not_allowed" });
+    return;
+  }
 
   if (pathname === "/api/challenge") {
     stats.challengesRequested++;

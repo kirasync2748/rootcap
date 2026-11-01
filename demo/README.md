@@ -1,3 +1,7 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:2816bbe9dd48cb93260f6fd213551107704b159ae8386bb9ff594d22f5bcfc3f -->
+
 # rootcap demo
 
 A minimal project showing how to integrate rootcap into your app.
@@ -8,6 +12,7 @@ Build the rootcap library first (from the repo root):
 
 ```sh
 npm run build:lib
+npm run build:types
 ```
 
 This compiles `lib/` to `dist/` so the `file:..` dependency resolves.
@@ -16,7 +21,7 @@ This compiles `lib/` to `dist/` so the `file:..` dependency resolves.
 
 ```sh
 cd demo
-npm install
+npm ci
 npm run dev   # http://localhost:3001
 ```
 
@@ -95,3 +100,5 @@ app.post("/signup", (req, res) => {
   <button type="submit">Sign up</button>
 </form>
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->

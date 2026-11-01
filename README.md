@@ -1,3 +1,7 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:5f6554f918ee6e482c58ce6f9d4f4d695ce30e254cbe003fdebff0041917f719 -->
+
 # rootcap
 
 A privacy-first, self-hosted captcha alternative powered by proof-of-work.
@@ -18,9 +22,9 @@ no behavioural surveillance.
 
 ## Tech stack
 
-- Node 24
+- Node 26.13.0 LTS (also tested on Node 24)
 - TypeScript
-- Vite 6
+- Vite 8
 - SCSS (dart-sass)
 - Web Workers + Web Crypto API
 - HS256 signed JWTs (node:crypto)
@@ -160,7 +164,7 @@ docker run -d -p 3000:3000 -e ROOTCAP_SECRET=your-secret rootcap
 # → open http://localhost:3000
 ```
 
-Without Docker you can build and serve it on any Node.js 24 host:
+Without Docker you can build and serve it on any Node.js 26.13.0 host:
 
 ```sh
 npm ci
@@ -172,7 +176,7 @@ ROOTCAP_SECRET=your-secret npm start   # serves site/ + API on :3000
 
 ## Publishing to npm
 
-This project is structured as an npm package (v1.0.0). The `lib/` directory
+This project is structured as an npm package (v1.1.0). The `lib/` directory
 contains the core library and widget; `src/` contains the demo website.
 
 ### Build the package
@@ -184,29 +188,91 @@ npm run build:lib
 This compiles the library to `dist/` using Vite library mode, producing ESM
 bundles for both the core library and the widget.
 
-### Publish to the npm registry
+### Publish with a trusted publisher
 
-1. **Log in to npm:**
+Configure the rootcap package on npm → Settings → Trusted Publisher → GitHub Actions:
 
-   ```sh
-   npm login
-   ```
+- Organization or user: `kirasync2748`
+- Repository: `rootcap`
+- Workflow filename: `publish.yml`
+- Environment: leave blank (the workflow does not use an environment).
 
-   Enter your npm username, password, email, and one-time password.
+Keep “Require two-factor authentication and disallow bypass 2fa tokens” enabled.
+No npm token secret is needed. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+This npm account setting must be saved by a package maintainer before the first release.
 
-2. **Bump the version** (if needed):
+After merging the release changes into main, create and push the matching tag:
 
-   ```sh
-   npm version 1.0.0
-   ```
+```sh
+git tag v1.1.0
+git push origin v1.1.0
+```
 
-3. **Build and publish:**
-   ```sh
-   npm publish
-   ```
-   The `prepublishOnly` script automatically runs `build:lib` and
-   `build:types` before publishing, producing the ESM bundles and the
-   TypeScript declaration files that ship in the package.
+The workflow tests Node 24 and 26.13.0, checks formatting, lint and types,
+builds the website, library, declarations and demo, and checks the package.
+Only after these checks pass does it verify the tag matches package.json
+and publish with OIDC and provenance. A failed check prevents publishing.
+The `prepack` hook also builds JavaScript and declarations for local tarballs.
+
+### Security and compatibility
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f42c9c033df101d65fde06f236259e54b5d2cbc1eeaba23ffd4db4841313ef42 -->
+
+Version 1.1.0 retains Node >=24 compatibility.
+
+<!-- /coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:7faa61aba1cad3d315c8fa584e97f1581a7689474b66578dad0ed85f85fa0eef -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:d16a9ca8bac712d8a922024135824f1b85c168fed9c6a4ca5cc51c912f6238ea -->
+
+Development, Docker and publishing use Node 26.13.0. Challenge counts must be integers from 1–1000.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:2c1838b346bb20c3b03de4cd0d28067f668e5861b69186c571c6e830384f80b9 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8e450556df94384ac5835a4e8155438e06b17789ffedc6368329c9121cff45f0 -->
+
+Difficulty must be an integer from 1–16, and lifetimes must be positive safe integers.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+Challenges with higher difficulties are rejected, including previously issued
+challenges. Generation throws RangeError if the encoded token exceeds 16,384
+characters. Invalid options throw RangeError; malformed signed claims fail verification.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+Production API handlers require ROOTCAP_SECRET (at least 16 characters).
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:3bb2a551e2ed53568e7305e69094893c4d8ac11145be2569f4776993fa0e8d50 -->
+
+The development fallback key is used when `NODE_ENV` is `development` and
+`ROOTCAP_SECRET` is missing or shorter than 16 characters. Do not set
+`NODE_ENV=development` in production.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+Use `verifyToken(secret, token, { scope: "signup" })` to bind redemption to
+an operation. Tokens remain stateless and reusable until expiry: applications
+requiring one-time redemption must track consumed tokens server-side. Proof of
+work raises the cost of automation; it does not establish a user's identity.
+Add application-level rate limits appropriate to your deployment.
+
+The widget participates in native FormData, exposes `reset()`, resets on form
+reset and token expiry, and emits `rootcap:verified` and `rootcap:reset` events.
 
 ### What gets published
 
@@ -218,3 +284,5 @@ Users can import from two entry points:
 | --------------------------------------------- | --------------------- |
 | `import { generateChallenge } from "rootcap"` | Core library          |
 | `import "rootcap/widget"`                     | Widget custom element |
+
+<!-- /coderabbit-ai-generated:v1 -->

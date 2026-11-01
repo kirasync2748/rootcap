@@ -5,10 +5,10 @@ export function renderHome(app: HTMLElement) {
     <section class="hero">
       <div class="hero-dots" aria-hidden="true"></div>
       <div class="container hero-inner">
-        <span class="eyebrow">No puzzles · No tracking · No third parties</span>
-        <h1 class="hero-title">Captcha that <span class="grad">respects</span><br>your visitors.</h1>
+        <a class="eyebrow release-badge" href="/docs">Introducing rootcap 1.1 <span>Node.js 26 ready ↗</span></a>
+        <h1 class="hero-title">A little proof.<br><span class="grad">A lot of privacy.</span></h1>
         <p class="hero-lead">
-          rootcap verifies humans with silent proof-of-work challenges solved
+          Add a quiet layer of protection with proof-of-work challenges solved
           in the browser. No clicking traffic lights, no behavioural
           surveillance, no external scripts watching your users.
         </p>
@@ -16,10 +16,11 @@ export function renderHome(app: HTMLElement) {
           <a class="btn btn-primary" href="/#demo">Try the demo</a>
           <a class="btn btn-ghost" href="/docs">Read the docs</a>
         </div>
+        <div class="install-command"><span aria-hidden="true">$</span><code>npm install rootcap</code><button type="button" id="copy-install" aria-label="Copy install command">Copy</button></div>
         <div class="hero-stats">
           <div class="stat"><strong>0</strong><span>third parties</span></div>
           <div class="stat"><strong>0</strong><span>cookies set</span></div>
-          <div class="stat"><strong>~6 KB</strong><span>widget size</span></div>
+          <div class="stat"><strong>100%</strong><span>open source</span></div>
         </div>
       </div>
       <div class="hero-glow" aria-hidden="true"></div>
@@ -35,7 +36,7 @@ export function renderHome(app: HTMLElement) {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
             </div>
             <h3>No puzzles</h3>
-            <p>Your browser solves tiny cryptographic challenges in the background. Visitors never lift a finger.</p>
+            <p>Your browser solves tiny cryptographic challenges in the background. No visual puzzles to solve.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true">
@@ -128,6 +129,7 @@ export function renderHome(app: HTMLElement) {
           <div class="form-row" id="demo-verify-row">
             <label>Verification</label>
             <rootcap-widget data-scope="demo" name="rootcap-token"></rootcap-widget>
+            <p class="verification-error" id="demo-verify-error" role="alert"></p>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Submit</button>
         </form>
@@ -182,19 +184,41 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
     </section>
   `;
 
+  app.querySelector("#copy-install")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget as HTMLButtonElement;
+    try {
+      await navigator.clipboard.writeText("npm install rootcap");
+      button.textContent = "Copied!";
+    } catch {
+      button.textContent = "Select command to copy";
+    }
+  });
+
   // Demo form handler
   const form = app.querySelector("#demo-form") as HTMLFormElement | null;
   const result = app.querySelector("#demo-result") as HTMLElement | null;
   const tokenOut = app.querySelector("#demo-token") as HTMLElement | null;
+  const verificationError = app.querySelector("#demo-verify-error") as HTMLElement | null;
+
+  form?.addEventListener("rootcap:verified", () => {
+    if (verificationError) verificationError.textContent = "";
+  });
+  const hideResult = () => {
+    if (result) result.hidden = true;
+  };
+  form?.addEventListener("rootcap:reset", hideResult);
+  form?.addEventListener("reset", () => {
+    if (verificationError) verificationError.textContent = "";
+    hideResult();
+  });
 
   form?.addEventListener("submit", (e) => {
     e.preventDefault();
-    const widget = form.querySelector("rootcap-widget") as HTMLElement | null;
-    const token = widget?.shadowRoot?.querySelector<HTMLInputElement>(".rc-token")?.value;
+
+    const token = new FormData(form).get("rootcap-token")?.toString();
     if (!token) {
-      const row = form.querySelector("#demo-verify-row");
-      row?.classList.add("shake");
-      setTimeout(() => row?.classList.remove("shake"), 400);
+      if (verificationError) verificationError.textContent = "Please complete verification.";
+      if (result) result.hidden = true;
       return;
     }
     if (result && tokenOut) {

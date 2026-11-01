@@ -11,6 +11,7 @@ function base64urlDecode(str: string): Buffer {
 }
 
 const HEADER = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+export const MAX_JWT_LENGTH = 16384;
 
 export function signJWT(secret: string, payload: Record<string, unknown>): string {
   const payloadB64 = base64url(JSON.stringify(payload));
@@ -20,9 +21,16 @@ export function signJWT(secret: string, payload: Record<string, unknown>): strin
 }
 
 export function verifyJWT<T = Record<string, unknown>>(secret: string, token: string): T | null {
+  if (typeof token !== "string" || token.length > MAX_JWT_LENGTH) return null;
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [headerB64, payloadB64, sigB64] = parts;
+  if (
+    headerB64 !== HEADER ||
+    !/^[A-Za-z0-9_-]+$/.test(payloadB64) ||
+    !/^[A-Za-z0-9_-]+$/.test(sigB64)
+  )
+    return null;
   const data = `${headerB64}.${payloadB64}`;
   const expected = createHmac("sha256", secret).update(data).digest();
   const actual = base64urlDecode(sigB64);
@@ -30,7 +38,10 @@ export function verifyJWT<T = Record<string, unknown>>(secret: string, token: st
     return null;
   }
   try {
-    return JSON.parse(base64urlDecode(payloadB64).toString("utf8")) as T;
+    const payload = JSON.parse(base64urlDecode(payloadB64).toString("utf8"));
+    return payload !== null && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as T)
+      : null;
   } catch {
     return null;
   }

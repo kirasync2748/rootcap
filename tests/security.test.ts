@@ -41,4 +41,51 @@ describe("untrusted token validation", () => {
     expect(verifySolution("salt", 0.5, 1)).toBe(false);
     expect(verifySolution("salt", 0, 0)).toBe(false);
   });
+
+  it("accepts difficulty 16 and rejects 17 for generated and signed challenges", () => {
+    expect(generateChallenge(secret, { difficulty: 16, count: 1 }).challenges[0].d).toBe(16);
+    expect(() => generateChallenge(secret, { difficulty: 17 })).toThrow(RangeError);
+    const iat = Date.now();
+    const claims = { seed: "a".repeat(64), count: 1, difficulty: 16, iat, exp: iat + 60000 };
+    expect(
+      validateChallenge(secret, { token: signJWT(secret, claims), solutions: [47393] }).success,
+    ).toBe(true);
+    expect(
+      validateChallenge(secret, {
+        token: signJWT(secret, { ...claims, difficulty: 17 }),
+        solutions: [47393],
+      }),
+    ).toEqual({ success: false, reason: "invalid_token" });
+  });
+
+  it.each(["a", "😀", '"\\'])("limits encoded challenge token size for %j scopes", (character) => {
+    let low = 0;
+    let high = 17000;
+    while (low + 1 < high) {
+      const middle = Math.floor((low + high) / 2);
+      try {
+        generateChallenge(secret, { count: 1, difficulty: 1, scope: character.repeat(middle) });
+        low = middle;
+      } catch (err) {
+        if (!(err instanceof RangeError)) throw err;
+        high = middle;
+      }
+    }
+    const scope = character.repeat(low);
+    const challenge = generateChallenge(secret, { count: 1, difficulty: 1, scope });
+    expect(challenge.token.length).toBeLessThanOrEqual(16384);
+    expect(verifyJWT(secret, challenge.token)).not.toBeNull();
+    let nonce = 0;
+    while (!verifySolution(challenge.challenges[0].s, nonce, 1)) nonce++;
+    const result = validateChallenge(
+      secret,
+      { token: challenge.token, solutions: [nonce] },
+      { scope },
+    );
+    expect(result.success).toBe(true);
+    expect(verifyToken(secret, result.token!, { scope })).toBe(true);
+    expect(() =>
+      generateChallenge(secret, { count: 1, difficulty: 1, scope: character.repeat(high) }),
+    ).toThrow(RangeError);
+  });
 });

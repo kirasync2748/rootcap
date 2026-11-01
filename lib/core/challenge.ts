@@ -1,11 +1,11 @@
 import { randomBytes, createHash } from "node:crypto";
-import { signJWT, verifyJWT } from "./jwt.js";
+import { MAX_JWT_LENGTH, signJWT, verifyJWT } from "./jwt.js";
 import { verifySolution } from "./pow.js";
 
 export interface ChallengeOptions {
   /** Number of challenges to generate (default 50). */
   count?: number;
-  /** Leading zero bits required per challenge (default 4). */
+  /** Leading zero bits required per challenge (1–16, default 4). */
   difficulty?: number;
   /** Time-to-live for the challenge token in ms (default 600000 = 10 min). */
   expiresMs?: number;
@@ -61,8 +61,8 @@ export function generateChallenge(secret: string, opts: ChallengeOptions = {}): 
   const expiresMs = opts.expiresMs ?? 600_000;
   if (!Number.isSafeInteger(count) || count < 1 || count > 1000)
     throw new RangeError("count must be an integer from 1 to 1000");
-  if (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 256)
-    throw new RangeError("difficulty must be an integer from 1 to 256");
+  if (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 16)
+    throw new RangeError("difficulty must be an integer from 1 to 16");
   if (
     !Number.isSafeInteger(expiresMs) ||
     expiresMs <= 0 ||
@@ -86,6 +86,7 @@ export function generateChallenge(secret: string, opts: ChallengeOptions = {}): 
     exp,
     scope: opts.scope,
   });
+  if (token.length > MAX_JWT_LENGTH) throw new RangeError("challenge token exceeds maximum length");
 
   return { challenges, token, expires: exp };
 }
@@ -128,7 +129,7 @@ export function validateChallenge(
     payload.count > 1000 ||
     !Number.isInteger(payload.difficulty) ||
     payload.difficulty < 1 ||
-    payload.difficulty > 256 ||
+    payload.difficulty > 16 ||
     !Number.isSafeInteger(payload.exp) ||
     !Number.isSafeInteger(payload.iat) ||
     payload.exp <= payload.iat ||

@@ -216,10 +216,44 @@ The `prepack` hook also builds JavaScript and declarations for local tarballs.
 
 ### Security and compatibility
 
-Version 1.1.0 retains Node >=24 compatibility; development, Docker and publishing
-use Node 26.13.0. Challenge counts must be integers from 1–1000, difficulty
-must be an integer from 1–256, and lifetimes must be positive safe integers.
-Invalid options now throw RangeError; malformed signed claims fail verification.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f42c9c033df101d65fde06f236259e54b5d2cbc1eeaba23ffd4db4841313ef42 -->
+
+Version 1.1.0 retains Node >=24 compatibility.
+
+<!-- /coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:7faa61aba1cad3d315c8fa584e97f1581a7689474b66578dad0ed85f85fa0eef -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:d16a9ca8bac712d8a922024135824f1b85c168fed9c6a4ca5cc51c912f6238ea -->
+
+Development, Docker and publishing use Node 26.13.0. Challenge counts must be integers from 1–1000.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:2c1838b346bb20c3b03de4cd0d28067f668e5861b69186c571c6e830384f80b9 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8e450556df94384ac5835a4e8155438e06b17789ffedc6368329c9121cff45f0 -->
+
+Difficulty must be an integer from 1–16, and lifetimes must be positive safe integers.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+Challenges with higher difficulties are rejected, including previously issued
+challenges. Generation throws RangeError if the encoded token exceeds 16,384
+characters. Invalid options throw RangeError; malformed signed claims fail verification.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
 Production API handlers require ROOTCAP_SECRET (at least 16 characters).
 <!-- coderabbit-ai-generated:v1 -->
 

@@ -49,9 +49,7 @@ function navigate() {
 
   if (location.hash) {
     requestAnimationFrame(() => {
-      document
-        .getElementById(decodeURIComponent(location.hash.slice(1)))
-        ?.scrollIntoView({ behavior: "smooth" });
+      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
     });
   } else {
     window.scrollTo(0, 0);

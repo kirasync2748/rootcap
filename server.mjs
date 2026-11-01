@@ -130,8 +130,9 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 400, { error: "invalid_url" });
     return;
   }
-  const allowed = pathname === "/api/verify" ? "POST" : "GET";
-  if (req.method !== allowed) {
+  const isVerify = pathname === "/api/verify";
+  const allowed = isVerify ? "POST" : "GET, HEAD";
+  if (isVerify ? req.method !== "POST" : req.method !== "GET" && req.method !== "HEAD") {
     res.setHeader("Allow", allowed);
     sendJson(res, 405, { error: "method_not_allowed" });
     return;

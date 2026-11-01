@@ -129,6 +129,7 @@ export function renderHome(app: HTMLElement) {
           <div class="form-row" id="demo-verify-row">
             <label>Verification</label>
             <rootcap-widget data-scope="demo" name="rootcap-token"></rootcap-widget>
+            <p class="verification-error" id="demo-verify-error" role="alert"></p>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Submit</button>
         </form>
@@ -197,15 +198,23 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
   const form = app.querySelector("#demo-form") as HTMLFormElement | null;
   const result = app.querySelector("#demo-result") as HTMLElement | null;
   const tokenOut = app.querySelector("#demo-token") as HTMLElement | null;
+  const verificationError = app.querySelector("#demo-verify-error") as HTMLElement | null;
+
+  form?.addEventListener("rootcap:verified", () => {
+    if (verificationError) verificationError.textContent = "";
+  });
+  form?.addEventListener("reset", () => {
+    if (verificationError) verificationError.textContent = "";
+    if (result) result.hidden = true;
+  });
 
   form?.addEventListener("submit", (e) => {
     e.preventDefault();
 
     const token = new FormData(form).get("rootcap-token")?.toString();
     if (!token) {
-      const row = form.querySelector("#demo-verify-row");
-      row?.classList.add("shake");
-      setTimeout(() => row?.classList.remove("shake"), 400);
+      if (verificationError) verificationError.textContent = "Please complete verification.";
+      if (result) result.hidden = true;
       return;
     }
     if (result && tokenOut) {

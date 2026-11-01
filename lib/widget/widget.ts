@@ -31,6 +31,7 @@ interface Challenge {
 class RootcapWidget extends HTMLElement {
   static formAssociated = true;
   private internals = this.attachInternals();
+  private formDisabled = false;
   private controller: AbortController | null = null;
   private expiryTimer: ReturnType<typeof setTimeout> | undefined;
   private state: WidgetState = "idle";
@@ -94,7 +95,7 @@ class RootcapWidget extends HTMLElement {
 
     box.dataset.state = state;
     checkbox.setAttribute("aria-pressed", state === "verified" ? "true" : "false");
-    checkbox.disabled = state === "verifying";
+    checkbox.disabled = this.formDisabled || state === "verifying";
 
     const messages: Record<WidgetState, string> = {
       idle: "I am human",
@@ -106,7 +107,7 @@ class RootcapWidget extends HTMLElement {
   }
 
   private async onClick() {
-    if (this.state === "verifying") return;
+    if (this.formDisabled || this.state === "verifying") return;
     this.reset();
     const controller = new AbortController();
     this.controller = controller;
@@ -222,6 +223,11 @@ class RootcapWidget extends HTMLElement {
 
   formResetCallback() {
     this.reset();
+  }
+  formDisabledCallback(disabled: boolean) {
+    this.formDisabled = disabled;
+    if (disabled) this.reset();
+    else this.setState(this.state);
   }
   attributeChangedCallback() {
     this.reset();

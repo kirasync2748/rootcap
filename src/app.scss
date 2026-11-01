@@ -1140,6 +1140,13 @@ a {
   outline: 3px solid var(--primary);
   outline-offset: 5px;
 }
+.code-copy-btn:focus-visible {
+  outline-color: #fff;
+}
+.verification-error {
+  color: #a02727;
+  font-size: 0.9rem;
+}
 .skip-link {
   position: fixed;
   top: -80px;

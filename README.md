@@ -221,7 +221,15 @@ use Node 26.13.0. Challenge counts must be integers from 1–1000, difficulty
 must be an integer from 1–256, and lifetimes must be positive safe integers.
 Invalid options now throw RangeError; malformed signed claims fail verification.
 Production API handlers require ROOTCAP_SECRET (at least 16 characters).
-Only the Vite development server may use the development fallback key.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:3bb2a551e2ed53568e7305e69094893c4d8ac11145be2569f4776993fa0e8d50 -->
+
+The development fallback key is used when `NODE_ENV` is `development` and
+`ROOTCAP_SECRET` is missing or shorter than 16 characters. Do not set
+`NODE_ENV=development` in production.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Use `verifyToken(secret, token, { scope: "signup" })` to bind redemption to
 an operation. Tokens remain stateless and reusable until expiry: applications

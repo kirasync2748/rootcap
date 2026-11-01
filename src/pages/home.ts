@@ -203,9 +203,13 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
   form?.addEventListener("rootcap:verified", () => {
     if (verificationError) verificationError.textContent = "";
   });
+  const hideResult = () => {
+    if (result) result.hidden = true;
+  };
+  form?.addEventListener("rootcap:reset", hideResult);
   form?.addEventListener("reset", () => {
     if (verificationError) verificationError.textContent = "";
-    if (result) result.hidden = true;
+    hideResult();
   });
 
   form?.addEventListener("submit", (e) => {

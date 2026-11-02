@@ -28,7 +28,6 @@
 - Refresh website styling, install-command copying, keyboard focus, reduced motion and mobile presentation.
 - Add tag-triggered npm trusted publishing after CI gates, with provenance and no long-lived npm token.
 
-
 ## 1.0.0
 
 - initial release.

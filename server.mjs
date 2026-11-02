@@ -18,14 +18,14 @@
  *   PORT — listen port (default 3000)
  */
 
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, statSync, realpathSync } from "node:fs";
 import http from "node:http";
-import { extname, join, normalize } from "node:path";
-import { generateChallenge, validateChallenge } from "./dist/core/index.js";
+import { extname, join, resolve, relative, isAbsolute, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const PORT = Number(process.env.PORT) || 3000;
-const SITE_DIR = normalize(process.env.SITE_DIR || "site");
-const LIB_DIR = normalize(process.env.LIB_DIR || "dist");
+const SITE_DIR = resolve(process.env.SITE_DIR || "site");
+const LIB_DIR = resolve(process.env.LIB_DIR || "dist");
 const SCOPE = "demo";
 
 const secret = process.env.ROOTCAP_SECRET;
@@ -38,23 +38,16 @@ if (!secret || secret.length < 16) {
   process.exit(1);
 }
 
-if (!existsSync(join(LIB_DIR, "core", "index.js"))) {
+if (!existsSync(join(LIB_DIR, "server", "index.js"))) {
   console.error(
-    `Error: ${join(LIB_DIR, "core", "index.js")} not found.\n` +
+    `Error: ${join(LIB_DIR, "server", "index.js")} not found.\n` +
       "Build the library first: npm run build:lib",
   );
   process.exit(1);
 }
 
-// In-memory usage stats — same shape as lib/core/stats.ts. Counters reset
-// when the server restarts.
-const stats = {
-  challengesRequested: 0,
-  verificationsAttempted: 0,
-  verificationsSucceeded: 0,
-  verificationsFailed: 0,
-  startedAt: Date.now(),
-};
+const { createApiHandler } = await import(pathToFileURL(join(LIB_DIR, "server", "index.js")).href);
+const api = createApiHandler({ secret, scope: SCOPE, demoSubmit: true });
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -78,48 +71,43 @@ function sendJson(res, status, body) {
   res.end(payload);
 }
 
-function readBody(req) {
-  return new Promise((resolve) => {
-    let data = "";
-    let size = 0;
-    req.on("error", () => resolve(null));
-    req.on("data", (chunk) => {
-      size += chunk.length;
-      if (size <= 65536) data += chunk;
-      else resolve(null);
-    });
-    req.on("end", () => {
-      try {
-        resolve(data ? JSON.parse(data) : {});
-      } catch {
-        resolve(null);
-      }
-    });
-  });
-}
-
-function serveStatic(pathname, res) {
-  let filePath = normalize(join(SITE_DIR, pathname === "/" ? "/index.html" : pathname));
-  if (!filePath.startsWith(SITE_DIR + "/") && filePath !== SITE_DIR) {
+function serveStatic(pathname, req, res) {
+  const inside = (root, path) => {
+    const rel = relative(root, path);
+    return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+  };
+  const requested = resolve(SITE_DIR, "." + pathname);
+  if (!inside(SITE_DIR, requested)) {
     sendJson(res, 403, { error: "forbidden" });
     return;
   }
-  if (existsSync(filePath) && statSync(filePath).isFile()) {
-    res.writeHead(200, {
-      "Content-Type": MIME_TYPES[extname(filePath)] || "application/octet-stream",
-    });
-    createReadStream(filePath).pipe(res);
+  let filePath = requested;
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    if (extname(pathname)) {
+      sendJson(res, 404, { error: "not_found" });
+      return;
+    }
+    filePath = join(SITE_DIR, "index.html");
+  }
+  if (!existsSync(filePath)) {
+    sendJson(res, 404, { error: "not_found" });
     return;
   }
-  // SPA fallback — same behaviour as the Vercel rewrite: every non-file path
-  // (e.g. /docs, /dashboard) gets the app shell and the client router takes over.
-  const shell = join(SITE_DIR, "index.html");
-  if (existsSync(shell)) {
-    res.writeHead(200, { "Content-Type": MIME_TYPES[".html"] });
-    createReadStream(shell).pipe(res);
+  if (!inside(realpathSync(SITE_DIR), realpathSync(filePath))) {
+    sendJson(res, 403, { error: "forbidden" });
     return;
   }
-  sendJson(res, 404, { error: "not_found" });
+  res.writeHead(200, {
+    "Content-Type": MIME_TYPES[extname(filePath)] || "application/octet-stream",
+    "X-Content-Type-Options": "nosniff",
+  });
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  const stream = createReadStream(filePath);
+  stream.on("error", () => res.destroy());
+  stream.pipe(res);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -130,43 +118,22 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 400, { error: "invalid_url" });
     return;
   }
-  const isVerify = pathname === "/api/verify";
-  const allowed = isVerify ? "POST" : "GET, HEAD";
-  if (isVerify ? req.method !== "POST" : req.method !== "GET" && req.method !== "HEAD") {
-    res.setHeader("Allow", allowed);
-    sendJson(res, 405, { error: "method_not_allowed" });
-    return;
-  }
-
-  if (pathname === "/api/challenge") {
-    stats.challengesRequested++;
-    sendJson(res, 200, generateChallenge(secret, { scope: SCOPE }));
-    return;
-  }
-
-  if (pathname === "/api/verify") {
-    const body = await readBody(req);
-    if (body === null) {
-      sendJson(res, 400, { success: false, reason: "invalid_body" });
+  try {
+    if (await api(req, res)) return;
+    if (pathname.startsWith("/api/")) {
+      sendJson(res, 404, { error: "not_found" });
       return;
     }
-    const result = validateChallenge(secret, body, { scope: SCOPE });
-    stats.verificationsAttempted++;
-    if (result.success) {
-      stats.verificationsSucceeded++;
-    } else {
-      stats.verificationsFailed++;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      res.setHeader("Allow", "GET, HEAD");
+      sendJson(res, 405, { error: "method_not_allowed" });
+      return;
     }
-    sendJson(res, 200, result);
-    return;
+    serveStatic(pathname, req, res);
+  } catch {
+    if (res.headersSent) res.destroy();
+    else sendJson(res, 500, { error: "server_error" });
   }
-
-  if (pathname === "/api/stats") {
-    sendJson(res, 200, { ...stats, uptime: Date.now() - stats.startedAt });
-    return;
-  }
-
-  serveStatic(pathname, res);
 });
 
 server.listen(PORT, "0.0.0.0", () => {

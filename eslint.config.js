@@ -11,10 +11,11 @@ export default tseslint.config(
   },
   {
     // Plain Node scripts (server.mjs) use Node/builtin globals directly.
-    files: ["**/server.mjs"],
+    files: ["**/server.mjs", "**/server-check.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",
+        fetch: "readonly",
         process: "readonly",
         URL: "readonly",
       },

@@ -56,6 +56,8 @@ export function deriveSalt(seed: string, index: number): string {
  * The token is a stateless HS256 JWT — no server-side storage required.
  */
 export function generateChallenge(secret: string, opts: ChallengeOptions = {}): ChallengeResponse {
+  if (opts.scope !== undefined && typeof opts.scope !== "string")
+    throw new RangeError("scope must be a string");
   const count = opts.count ?? 50;
   const difficulty = opts.difficulty ?? 4;
   const expiresMs = opts.expiresMs ?? 600_000;

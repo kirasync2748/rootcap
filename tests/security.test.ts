@@ -89,3 +89,9 @@ describe("untrusted token validation", () => {
     ).toThrow(RangeError);
   });
 });
+
+describe("scope options", () => {
+  it("rejects non-string scopes before issuing an unusable challenge", () => {
+    expect(() => generateChallenge(secret, { scope: 42 as unknown as string })).toThrow(RangeError);
+  });
+});

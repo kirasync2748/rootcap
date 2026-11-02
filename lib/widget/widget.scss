@@ -9,6 +9,9 @@
   --rc-track: #eef2f0;
   --rc-radius: 12px;
   --rc-font: inherit;
+  --rc-verified-surface: #ecfdf5;
+  --rc-on-primary: #ffffff;
+  --rc-focus: #065f46;
   display: inline-block;
 }
 
@@ -40,7 +43,7 @@
 
   &[data-state="verified"] {
     border-color: var(--rc-primary);
-    background: #ecfdf5;
+    background: var(--rc-verified-surface);
   }
 
   &[data-state="error"] {
@@ -90,7 +93,7 @@
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(5, 150, 105, 0.3);
+    outline: 3px solid var(--rc-focus);
     outline-offset: 2px;
   }
 }
@@ -114,7 +117,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    background: #fff;
+    background: var(--rc-on-primary);
     -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 13l4 4L19 7'/></svg>")
       center / contain no-repeat;
     mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 13l4 4L19 7'/></svg>")
@@ -127,11 +130,11 @@
   inset: 3px;
   border-radius: 50%;
   border: 2.5px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border-top-color: var(--rc-on-primary);
   opacity: 0;
-  animation: rc-spin 0.7s linear infinite;
 
   .rc-widget[data-state="verifying"] & {
+    animation: rc-spin 0.7s linear infinite;
     opacity: 1;
   }
 }
@@ -161,5 +164,19 @@
   }
   75% {
     transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-widget,
+  .rc-checkbox,
+  .rc-checkmark {
+    transition: none;
+  }
+  .rc-widget[data-state="error"] {
+    animation: none;
+  }
+  .rc-widget[data-state="verifying"] .rc-spinner {
+    animation-duration: 2s;
   }
 }

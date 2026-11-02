@@ -1,43 +1,80 @@
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:2816bbe9dd48cb93260f6fd213551107704b159ae8386bb9ff594d22f5bcfc3f -->
-
 # rootcap demo
 
 A minimal project showing how to integrate rootcap into your app.
 
-## Prerequisites
+## Run the demo
 
-Build the rootcap library first (from the repo root):
-
-```sh
-npm run build:lib
-npm run build:types
-```
-
-This compiles `lib/` to `dist/` so the `file:..` dependency resolves.
-
-## Run
+From the repository root:
 
 ```sh
-cd demo
 npm ci
-npm run dev   # http://localhost:3001
+bash scripts/install-demo.sh
+npm run dev --prefix demo   # http://localhost:3001
 ```
+
+The script builds and packs rootcap, installs the resulting npm archive into the
+standalone demo, and checks that it is version 1.2.0. Run it again after changing
+the library. The `file:..` dependency is the local development fallback while
+1.2.0 is unpublished. After release, a new project can use
+`npm install rootcap@1.2.0` from the npm registry.
+
+## Production smoke test
+
+After installing the packed library and building the demo, run from the repository root:
+
+```sh
+npm run build --prefix demo
+export ROOTCAP_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
+npm start --prefix demo
+```
+
+The production demo server imports `rootcap/server` from the installed package.
+
+The static Vite build alone does not include a backend. Deploy it with the Node
+server or implement the same API in your own backend. `npm run preview` is only
+for viewing static output; use the server above to test verification.
+
+The Submit button calls `/api/submit`, which verifies the token with the `demo`
+scope before reporting success. No name or other form data is stored. Token expiry
+clears verification and pending submissions. The development API uses the same
+bounded JSON and method handling as production. Never use the development fallback
+secret in production.
 
 ## How it works
 
 ### Server side
 
-The Vite config (`vite.config.ts`) adds two API endpoints using rootcap's
-core library:
+The Vite config (`vite.config.ts`) uses `createApiHandler` from `rootcap/server`.
+The server fixes the scope to `demo` and provides challenge, verification,
+statistics and example submission endpoints:
 
 ```typescript
-import { generateChallenge, validateChallenge } from "rootcap";
+import { defineConfig, type PluginOption } from "vite";
+import { createApiHandler } from "rootcap/server";
 
-// GET /api/challenge — issue proof-of-work challenges
-// POST /api/verify    — validate solutions, return a redeem token
+const apiPlugin: PluginOption = {
+  name: "rootcap-demo-api",
+  configureServer(server) {
+    const api = createApiHandler({ demoSubmit: true });
+    server.middlewares.use((req, res, next) => {
+      void api(req, res)
+        .then((handled) => {
+          if (!handled) next();
+        })
+        .catch(next);
+    });
+  },
+};
+export default defineConfig({
+  plugins: [apiPlugin],
+  server: { host: "0.0.0.0", port: 3001 },
+});
 ```
+
+The adapter handles `GET` and `HEAD` for `/api/challenge` and `/api/stats`,
+and `POST` for `/api/verify` and `/api/submit`. It returns 405 for unsupported
+methods and lets other routes continue to Vite. The demo submission endpoint
+verifies that the redeem token has the `demo` scope before accepting it.
 
 ### Client side
 
@@ -55,39 +92,58 @@ And dropped into the HTML form:
 
 ## Using rootcap in your own project
 
-Once rootcap is published to npm:
+Once rootcap 1.2.0 is published to npm, install it and the separately maintained
+Express framework used in this example:
 
 ```sh
-npm install rootcap
+npm install rootcap@1.2.0 express
 ```
 
 ### Server
 
-```typescript
+```javascript
+import express from "express";
 import { generateChallenge, validateChallenge, verifyToken } from "rootcap";
 
 const secret = process.env.ROOTCAP_SECRET;
+if (!secret || secret.length < 16) throw new Error("Set ROOTCAP_SECRET");
 
-// Issue challenges
+const app = express();
+app.use(express.json({ limit: "64kb" }));
+app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+
 app.get("/api/challenge", (_req, res) => {
   res.json(generateChallenge(secret, { scope: "signup" }));
 });
 
-// Verify solutions
 app.post("/api/verify", (req, res) => {
   res.json(validateChallenge(secret, req.body, { scope: "signup" }));
 });
 
-// Verify the redeem token on form submission
 app.post("/signup", (req, res) => {
-  if (!verifyToken(secret, req.body["rootcap-token"])) {
+  if (!verifyToken(secret, req.body["rootcap-token"], { scope: "signup" })) {
     return res.status(403).json({ error: "captcha failed" });
   }
-  // Process the form...
+  // Process the form after verifying the token.
+  return res.json({ success: true });
 });
+
+app.listen(3000);
 ```
 
 ### Client
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:8accf2dda21ae0f831d98dd7fc1cec4efe1ae14d8330b3e32c9d26335a21166f -->
+
+Bundle the widget import with a tool such as Vite and serve the API and form
+from the same origin. If the API is on another origin, set the widget's
+`data-api` to the backend origin and enable CORS for the frontend origin,
+including the JSON POST preflight. Route the form's `action` to the application
+submission endpoint directly or through a proxy.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ```html
 <script type="module">
@@ -100,5 +156,3 @@ app.post("/signup", (req, res) => {
   <button type="submit">Sign up</button>
 </form>
 ```
-
-<!-- /coderabbit-ai-generated:v1 -->

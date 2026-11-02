@@ -1,4 +1,5 @@
 import widgetStyles from "./widget.scss?inline";
+import { scheduleExpiry } from "./expiry.js";
 // Bundled AND inlined by Vite — the worker ships inside the widget bundle as a
 // self-contained blob, so it works in the dev server, in production builds and
 // when the widget is consumed from the npm package by another bundler.
@@ -33,14 +34,14 @@ class RootcapWidget extends HTMLElement {
   private internals = this.attachInternals();
   private formDisabled = false;
   private controller: AbortController | null = null;
-  private expiryTimer: ReturnType<typeof setTimeout> | undefined;
+  private cancelExpiry: (() => void) | undefined;
   private state: WidgetState = "idle";
   private worker: Worker | null = null;
   private solveId = 0;
   private shadow: ShadowRoot;
 
   static get observedAttributes() {
-    return ["data-api", "data-scope", "name"];
+    return ["data-api", "data-scope", "name", "required", "disabled"];
   }
 
   constructor() {
@@ -50,7 +51,7 @@ class RootcapWidget extends HTMLElement {
   }
 
   private get apiBase(): string {
-    return this.getAttribute("data-api") || "";
+    return (this.getAttribute("data-api") || "").replace(/\/+$/, "");
   }
 
   private get scope(): string {
@@ -85,6 +86,9 @@ class RootcapWidget extends HTMLElement {
 
     const checkbox = this.shadow.querySelector(".rc-checkbox") as HTMLButtonElement;
     checkbox.addEventListener("click", () => this.onClick());
+    box.addEventListener("click", (event) => {
+      if (!checkbox.contains(event.target as Node) && !checkbox.disabled) checkbox.click();
+    });
   }
 
   private setState(state: WidgetState, message?: string) {
@@ -95,7 +99,12 @@ class RootcapWidget extends HTMLElement {
 
     box.dataset.state = state;
     checkbox.setAttribute("aria-pressed", state === "verified" ? "true" : "false");
-    checkbox.disabled = this.formDisabled || state === "verifying";
+    checkbox.disabled = this.formDisabled || this.hasAttribute("disabled") || state === "verifying";
+    this.internals.setValidity(
+      this.hasAttribute("required") && state !== "verified" ? { valueMissing: true } : {},
+      this.hasAttribute("required") && state !== "verified" ? "Please complete verification." : "",
+      checkbox,
+    );
 
     const messages: Record<WidgetState, string> = {
       idle: "I am human",
@@ -106,8 +115,18 @@ class RootcapWidget extends HTMLElement {
     label.textContent = message ?? messages[state];
   }
 
-  private async onClick() {
-    if (this.formDisabled || this.state === "verifying") return;
+  private onClick() {
+    void this.execute();
+  }
+
+  /** Read the current redeem token; empty before verification or after reset. */
+  getResponse(): string {
+    return (this.shadow.querySelector(".rc-token") as HTMLInputElement).value;
+  }
+
+  /** Start verification; failures are reported through rootcap:error. */
+  async execute(): Promise<void> {
+    if (this.formDisabled || this.hasAttribute("disabled") || this.state === "verifying") return;
     this.reset();
     const controller = new AbortController();
     this.controller = controller;
@@ -124,6 +143,24 @@ class RootcapWidget extends HTMLElement {
       );
       if (!res.ok) throw new Error("challenge request failed");
       const data = (await res.json()) as { challenges: Challenge[]; token: string };
+      if (
+        !Array.isArray(data.challenges) ||
+        data.challenges.length < 1 ||
+        data.challenges.length > 1000 ||
+        typeof data.token !== "string" ||
+        !data.token ||
+        data.token.length > 16384 ||
+        data.challenges.some(
+          (c) =>
+            !c ||
+            typeof c.s !== "string" ||
+            !/^[a-f0-9]{64}$/.test(c.s) ||
+            !Number.isInteger(c.d) ||
+            c.d < 1 ||
+            c.d > 16,
+        )
+      )
+        throw new Error("invalid challenge response");
       const solutions = await this.solve(data.challenges, controller.signal);
       const verifyRes = await fetch(`${this.apiBase}/api/verify`, {
         method: "POST",
@@ -138,10 +175,11 @@ class RootcapWidget extends HTMLElement {
         reason?: string;
         expires?: number;
       };
-      if (!result.success || !result.token) {
+      if (result.success !== true || typeof result.token !== "string" || !result.token) {
         throw new Error(result.reason || "verification failed");
       }
-      if (controller.signal.aborted || this.controller !== controller) return;
+      if (this.controller !== controller) return;
+      if (controller.signal.aborted) throw new Error("verification timed out");
       const input = this.shadow.querySelector(".rc-token") as HTMLInputElement;
       input.value = result.token;
       const formValue = new FormData();
@@ -149,26 +187,40 @@ class RootcapWidget extends HTMLElement {
       this.internals.setFormValue(formValue);
       if (!Number.isSafeInteger(result.expires) || result.expires! <= Date.now())
         throw new Error("invalid expiry");
-      this.expiryTimer = setTimeout(
-        () => this.reset(),
-        Math.min(result.expires! - Date.now(), 2147483647),
-      );
       this.setState("verified");
+      this.cancelExpiry = scheduleExpiry(result.expires!, () => {
+        this.reset();
+        this.dispatchEvent(new CustomEvent("rootcap:expired", { bubbles: true, composed: true }));
+      });
       this.dispatchEvent(
         new CustomEvent("rootcap:verified", {
           bubbles: true,
           composed: true,
-          detail: { token: result.token },
+          detail: { token: result.token, expires: result.expires },
         }),
       );
-    } catch {
+    } catch (error) {
       if (this.controller === controller) {
         this.internals.setFormValue(null);
         (this.shadow.querySelector(".rc-token") as HTMLInputElement).value = "";
         this.setState("error");
+        this.dispatchEvent(
+          new CustomEvent("rootcap:error", {
+            bubbles: true,
+            composed: true,
+            detail: {
+              reason: controller.signal.aborted
+                ? "timeout"
+                : error instanceof Error
+                  ? error.message
+                  : "verification failed",
+            },
+          }),
+        );
       }
     } finally {
       clearTimeout(timeout);
+      if (this.controller === controller) this.controller = null;
     }
   }
 
@@ -180,6 +232,7 @@ class RootcapWidget extends HTMLElement {
 
       const abort = () => {
         worker.terminate();
+        if (this.worker === worker) this.worker = null;
         reject(new Error("verification cancelled"));
       };
       signal.addEventListener("abort", abort, { once: true });
@@ -190,6 +243,15 @@ class RootcapWidget extends HTMLElement {
       worker.onmessage = (e: MessageEvent) => {
         const msg = e.data;
         if (msg.id !== id) return;
+        if (msg.type === "progress") {
+          this.dispatchEvent(
+            new CustomEvent("rootcap:progress", {
+              bubbles: true,
+              composed: true,
+              detail: { completed: msg.index, total: msg.total },
+            }),
+          );
+        }
         if (msg.type === "done") {
           signal.removeEventListener("abort", abort);
           worker.terminate();
@@ -205,7 +267,14 @@ class RootcapWidget extends HTMLElement {
         reject(new Error("solver crashed"));
       };
 
-      worker.postMessage({ id, challenges });
+      try {
+        worker.postMessage({ id, challenges });
+      } catch (error) {
+        signal.removeEventListener("abort", abort);
+        worker.terminate();
+        this.worker = null;
+        reject(error);
+      }
     });
   }
 
@@ -214,11 +283,16 @@ class RootcapWidget extends HTMLElement {
     this.controller = null;
     this.worker?.terminate();
     this.worker = null;
-    clearTimeout(this.expiryTimer);
+    this.cancelExpiry?.();
+    this.cancelExpiry = undefined;
     this.internals.setFormValue(null);
     (this.shadow.querySelector(".rc-token") as HTMLInputElement).value = "";
     this.setState("idle");
     this.dispatchEvent(new CustomEvent("rootcap:reset", { bubbles: true, composed: true }));
+  }
+
+  connectedCallback() {
+    this.setState(this.state);
   }
 
   formResetCallback() {
@@ -229,7 +303,12 @@ class RootcapWidget extends HTMLElement {
     if (disabled) this.reset();
     else this.setState(this.state);
   }
-  attributeChangedCallback() {
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+    if (oldValue === newValue) return;
+    if (name === "required") {
+      this.setState(this.state);
+      return;
+    }
     this.reset();
     (this.shadow.querySelector(".rc-token") as HTMLInputElement).name = this.inputName;
   }

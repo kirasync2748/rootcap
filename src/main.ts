@@ -24,7 +24,11 @@ navToggle.addEventListener("click", () => {
   navToggle.classList.toggle("open", open);
 });
 
+let cleanup: (() => void) | undefined;
+
 function navigate() {
+  cleanup?.();
+  cleanup = undefined;
   const app = document.getElementById("app")!;
   const path = location.pathname;
 
@@ -33,10 +37,10 @@ function navigate() {
       renderDocs(app);
       document.body.dataset.page = "docs";
     } else if (path === "/dashboard") {
-      renderDashboard(app);
+      cleanup = renderDashboard(app);
       document.body.dataset.page = "dashboard";
     } else if (path === "/" || path === "") {
-      renderHome(app);
+      cleanup = renderHome(app);
       document.body.dataset.page = "home";
     } else {
       renderNotFound(app);
@@ -49,7 +53,11 @@ function navigate() {
 
   if (location.hash) {
     requestAnimationFrame(() => {
-      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+      try {
+        document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+      } catch {
+        /* Ignore malformed fragment escapes. */
+      }
     });
   } else {
     window.scrollTo(0, 0);

@@ -15,6 +15,7 @@ export default defineConfig({
     lib: {
       entry: {
         "core/index": "lib/core/index.ts",
+        "server/index": "lib/api/server.ts",
         "widget/widget": "lib/widget/widget.ts",
       },
       formats: ["es"],

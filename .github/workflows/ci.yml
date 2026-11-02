@@ -29,5 +29,6 @@ jobs:
       - run: npm run build:lib
       - run: npm run build:types
       - run: npm pack --dry-run
-      - run: npm ci && npm run build
-        working-directory: demo
+      - run: bash scripts/install-demo.sh
+      - run: npm run build --prefix demo
+      - run: npm test --prefix demo

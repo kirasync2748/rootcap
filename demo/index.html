@@ -76,6 +76,14 @@
       button:hover {
         background: #047857;
       }
+      button:focus-visible {
+        outline: 3px solid #065f46;
+        outline-offset: 3px;
+      }
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+      }
       .result {
         margin-top: 20px;
         padding: 16px;
@@ -95,21 +103,23 @@
   </head>
   <body>
     <div class="card">
-      <h1>rootcap demo</h1>
+      <h1>rootcap 1.2 demo</h1>
       <p>A minimal form protected by rootcap proof-of-work captcha.</p>
       <form id="form">
         <label for="name">Name</label>
         <input id="name" type="text" placeholder="Your name" required />
         <label>Verification</label>
         <rootcap-widget
+          required
           data-scope="demo"
           name="rootcap-token"
           style="margin-bottom: 20px; display: block"
         ></rootcap-widget>
+        <p id="error" role="alert"></p>
         <button type="submit">Submit</button>
       </form>
       <div class="result" id="result" hidden>
-        <strong>Token received</strong>
+        <strong>Verified by the server</strong>
         <code id="token"></code>
       </div>
     </div>

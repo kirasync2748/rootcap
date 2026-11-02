@@ -59,9 +59,11 @@ export function renderDashboard(app: HTMLElement) {
     return `${h}h ${m % 60}m`;
   }
 
+  const controller = new AbortController();
+
   async function fetchStats() {
     try {
-      const res = await fetch("/api/stats");
+      const res = await fetch("/api/stats", { signal: controller.signal });
       if (!res.ok) throw new Error("stats request failed");
       const data = (await res.json()) as {
         challengesRequested: number;
@@ -101,4 +103,8 @@ export function renderDashboard(app: HTMLElement) {
     }
     fetchStats();
   }, 5000);
+  return () => {
+    clearInterval(intervalId);
+    controller.abort();
+  };
 }

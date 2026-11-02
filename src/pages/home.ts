@@ -1,3 +1,4 @@
+import { setupDemoForm } from "../utils/demo-form";
 import { addCopyButtons } from "../utils/code-copy";
 
 export function renderHome(app: HTMLElement) {
@@ -5,7 +6,7 @@ export function renderHome(app: HTMLElement) {
     <section class="hero">
       <div class="hero-dots" aria-hidden="true"></div>
       <div class="container hero-inner">
-        <a class="eyebrow release-badge" href="/docs">Introducing rootcap 1.1 <span>Node.js 26 ready ↗</span></a>
+        <a class="eyebrow release-badge" href="/docs">Introducing rootcap 1.2 <span>More control. Same privacy. ↗</span></a>
         <h1 class="hero-title">A little proof.<br><span class="grad">A lot of privacy.</span></h1>
         <p class="hero-lead">
           Add a quiet layer of protection with proof-of-work challenges solved
@@ -128,7 +129,7 @@ export function renderHome(app: HTMLElement) {
           </div>
           <div class="form-row" id="demo-verify-row">
             <label>Verification</label>
-            <rootcap-widget data-scope="demo" name="rootcap-token"></rootcap-widget>
+            <rootcap-widget data-scope="demo" name="rootcap-token" required></rootcap-widget>
             <p class="verification-error" id="demo-verify-error" role="alert"></p>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Submit</button>
@@ -138,7 +139,7 @@ export function renderHome(app: HTMLElement) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
           <div>
-            <strong>Token received</strong>
+            <strong>Verified by the server</strong>
             <code id="demo-token"></code>
           </div>
         </div>
@@ -200,33 +201,12 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
   const tokenOut = app.querySelector("#demo-token") as HTMLElement | null;
   const verificationError = app.querySelector("#demo-verify-error") as HTMLElement | null;
 
-  form?.addEventListener("rootcap:verified", () => {
-    if (verificationError) verificationError.textContent = "";
-  });
-  const hideResult = () => {
-    if (result) result.hidden = true;
-  };
-  form?.addEventListener("rootcap:reset", hideResult);
-  form?.addEventListener("reset", () => {
-    if (verificationError) verificationError.textContent = "";
-    hideResult();
-  });
-
-  form?.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const token = new FormData(form).get("rootcap-token")?.toString();
-    if (!token) {
-      if (verificationError) verificationError.textContent = "Please complete verification.";
-      if (result) result.hidden = true;
-      return;
-    }
-    if (result && tokenOut) {
-      tokenOut.textContent = token.slice(0, 48) + "…";
-      result.hidden = false;
-    }
-  });
+  const cleanup =
+    form && result && tokenOut && verificationError
+      ? setupDemoForm(form, result, tokenOut, verificationError)
+      : undefined;
 
   // Add copy buttons to all code blocks
   addCopyButtons(app);
+  return cleanup;
 }

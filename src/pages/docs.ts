@@ -73,9 +73,10 @@ npm install rootcap
 <span class="c-comment"># yarn</span>
 yarn add rootcap</code></pre>
           <p>
-            The package ships as ESM with zero runtime dependencies. It works in any
-            Node.js server (Express, Fastify, Hono, Vercel functions, Cloudflare
-            Workers with nodejs_compat, and more) and in any modern browser.
+            The package ships as ESM with zero runtime dependencies. The core library
+            requires a compatible Node.js runtime; the widget uses Web Workers and Web
+            Crypto in a secure browser context. Version 1.2.0 must be published before
+            it can be installed from the npm registry.
           </p>
         </section>
 
@@ -91,24 +92,29 @@ node -e <span class="c-str">"console.log(require('crypto').randomBytes(48).toStr
 ROOTCAP_SECRET=your-generated-secret-here</code></pre>
 
           <h3>2. Add server endpoints</h3>
-          <p>Create a challenge endpoint and a verify endpoint:</p>
-          <pre class="code-block" data-file="server.ts"><code><span class="c-key">import</span> { generateChallenge, validateChallenge } <span class="c-key">from</span> <span class="c-str">"rootcap"</span>;
+          <p>Install Express separately, then create challenge and verification routes. Set ROOTCAP_SECRET before starting the server:</p>
+          <pre class="code-block" data-file="server.js"><code><span class="c-key">import</span> express <span class="c-key">from</span> <span class="c-str">"express"</span>;
+<span class="c-key">import</span> { generateChallenge, validateChallenge, verifyToken } <span class="c-key">from</span> <span class="c-str">"rootcap"</span>;
 
 <span class="c-key">const</span> secret = process.env.ROOTCAP_SECRET;
+<span class="c-key">if</span> (!secret || secret.length &lt; 16) <span class="c-key">throw new</span> Error(<span class="c-str">"Set ROOTCAP_SECRET"</span>);
+<span class="c-key">const</span> app = express();
+app.use(express.json({ limit: <span class="c-str">"64kb"</span> }));
+app.use(express.urlencoded({ extended: false, limit: <span class="c-str">"64kb"</span> }));
 
-<span class="c-comment">// GET /api/challenge — issue challenges</span>
-<span class="c-key">export default async function</span> handler(req, res) {
+app.get(<span class="c-str">"/api/challenge"</span>, (_req, res) =&gt; {
   res.json(generateChallenge(secret, { scope: <span class="c-str">"signup"</span> }));
-}
-
-<span class="c-comment">// POST /api/verify — validate solutions</span>
-<span class="c-key">export default async function</span> verify(req, res) {
-  <span class="c-key">const</span> body = <span class="c-key">await</span> req.json();
-  <span class="c-key">const</span> result = validateChallenge(secret, body, {
-    scope: <span class="c-str">"signup"</span>,
-  });
-  res.json(result);
-}</code></pre>
+});
+app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
+  res.json(validateChallenge(secret, req.body, { scope: <span class="c-str">"signup"</span> }));
+});
+app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
+  <span class="c-key">if</span> (!verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> })) {
+    <span class="c-key">return</span> res.status(403).json({ error: <span class="c-str">"captcha failed"</span> });
+  }
+  <span class="c-key">return</span> res.json({ success: true });
+});
+app.listen(3000);</code></pre>
 
           <h3>3. Add the widget to your form</h3>
           <pre class="code-block" data-file="form.html"><code><span class="c-comment">&lt;!-- Import the widget --&gt;</span>
@@ -120,15 +126,17 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
 &lt;form action=<span class="c-str">"/signup"</span> method=<span class="c-str">"POST"</span>&gt;
   &lt;input name=<span class="c-str">"email"</span> type=<span class="c-str">"email"</span> required /&gt;
   &lt;rootcap-widget
-    data-api=<span class="c-str">"https://api.yoursite.com"</span>
     data-scope=<span class="c-str">"signup"</span>
-    name=<span class="c-str">"rootcap-token"</span>&gt;
+    name=<span class="c-str">"rootcap-token"</span> required&gt;
   &lt;/rootcap-widget&gt;
   &lt;button type=<span class="c-str">"submit"</span>&gt;Sign up&lt;/button&gt;
 &lt;/form&gt;</code></pre>
           <p>
-            The widget injects a hidden input with the redeem token. When the form
-            submits, verify the token on your server with <code>verifyToken()</code>.
+            Bundle the bare import with a tool such as Vite. The widget contributes
+            its token to the form; verify it on your server with the same scope. For
+            a different API origin, set <code>data-api</code> to the backend origin and
+            enable CORS for the frontend origin, including the JSON POST preflight.
+            Route the form action to your submission endpoint directly or via a proxy.
           </p>
         </section>
 
@@ -187,7 +195,7 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
           <h3>verifyToken(secret, token, options?)</h3>
           <p>Pass <code>{ scope: "signup" }</code> to enforce the redemption scope. Tokens are reusable until expiry; track consumed tokens in your application if you need one-time use. Call the widget’s <code>reset()</code> method to clear verification.</p>
           <p>Validates a previously issued redeem token. Returns <code>true</code> or <code>false</code>.</p>
-          <pre class="code-block" data-file="server.ts"><code><span class="c-key">const</span> ok = verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>]);
+          <pre class="code-block" data-file="server.ts"><code><span class="c-key">const</span> ok = verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> });
 <span class="c-key">if</span> (!ok) <span class="c-key">return</span> res.status(<span class="c-str">403</span>).json({ error: <span class="c-str">"captcha failed"</span> });</code></pre>
         </section>
 
@@ -200,16 +208,23 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
             <thead><tr><th>Attribute</th><th>Default</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td><code>data-api</code></td><td>same origin</td><td>Base URL for the challenge / verify endpoints.</td></tr>
-              <tr><td><code>data-scope</code></td><td>"default"</td><td>Challenge scope — must match the server scope.</td></tr>
-              <tr><td><code>name</code></td><td>"rootcap-token"</td><td>Name of the hidden input that holds the token.</td></tr>
+              <tr><td><code>data-scope</code></td><td>"default"</td><td>Sent as a challenge query parameter; configure the matching scope on the server and enforce it when redeeming. The Node adapter ignores the query parameter.</td></tr>
+              <tr><td><code>name</code></td><td>"rootcap-token"</td><td>Form field name for the redeem token.</td></tr>
             </tbody>
           </table>
 
+          <h3>Controls in 1.2.0</h3>
+          <p>Call <code>execute()</code> to start verification, <code>getResponse()</code> to read the current token, and optionally <code>reset()</code> to clear it. Verification also clears on form reset and expiry. Add <code>required</code> for native form validation or <code>disabled</code> to pause verification.</p>
+          <p>The optional Node adapter is available from <code>rootcap/server</code> as <code>createApiHandler({ secret, scope })</code>. It handles challenge, verify and stats requests; unknown routes return false. Configure the scope on the server.</p>
           <h3>Events</h3>
           <table class="docs-table">
             <thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>rootcap:verified</code></td><td><code>{ token }</code></td><td>Fired when the widget successfully verifies.</td></tr>
+              <tr><td><code>rootcap:verified</code></td><td><code>{ token, expires }</code></td><td>Fired when the widget successfully verifies.</td></tr>
+              <tr><td><code>rootcap:progress</code></td><td><code>{ completed, total }</code></td><td>One more challenge solved.</td></tr>
+              <tr><td><code>rootcap:error</code></td><td><code>{ reason }</code></td><td>Verification failed or timed out.</td></tr>
+              <tr><td><code>rootcap:expired</code></td><td>—</td><td>Token expired and verification was cleared.</td></tr>
+              <tr><td><code>rootcap:reset</code></td><td>—</td><td>Verification cleared.</td></tr>
             </tbody>
           </table>
           <pre class="code-block" data-file="client.ts"><code>document.querySelector(<span class="c-str">"rootcap-widget"</span>)
@@ -221,7 +236,9 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
           <p>Override CSS custom properties on the host element to match your brand:</p>
           <pre class="code-block" data-file="styles.css"><code>rootcap-widget {
   --rc-primary: #6366f1;
-  --rc-primary-dark: #4f46e5;
+  --rc-verified-surface: #eef2ff;
+  --rc-on-primary: #ffffff;
+  --rc-focus: #4338ca;
   --rc-surface: #ffffff;
   --rc-border: #e2e8f0;
   --rc-radius: 8px;
@@ -234,7 +251,7 @@ ROOTCAP_SECRET=your-generated-secret-here</code></pre>
           <table class="docs-table">
             <thead><tr><th>Setting</th><th>Default</th><th>Range</th><th>Notes</th></tr></thead>
             <tbody>
-              <tr><td><code>count</code></td><td>50</td><td>1–200</td><td>More challenges = more work for bots.</td></tr>
+              <tr><td><code>count</code></td><td>50</td><td>1–1000</td><td>More challenges = more work for bots.</td></tr>
               <tr><td><code>difficulty</code></td><td>4</td><td>1–16</td><td>Each +1 roughly doubles solve time.</td></tr>
               <tr><td><code>expiresMs</code></td><td>600000</td><td>—</td><td>How long a challenge stays valid.</td></tr>
               <tr><td><code>tokenTtlMs</code></td><td>1200000</td><td>—</td><td>How long the redeem token is valid.</td></tr>
@@ -285,25 +302,28 @@ git clone https://github.com/kirasync2748/rootcap.git
 <span class="c-comment"># 2. Build the image</span>
 docker build -t rootcap .
 
-<span class="c-comment"># 3. Run it with your secret</span>
-docker run -d -p 3000:3000 -e ROOTCAP_SECRET=your-secret rootcap
+<span class="c-comment"># 3. Generate a secret inside the image and run the server</span>
+ROOTCAP_SECRET=$(docker run --rm --entrypoint node rootcap -e <span class="c-str">"process.stdout.write(require('node:crypto').randomBytes(48).toString('hex'))"</span>) &amp;&amp;
+  test -n <span class="c-str">"$ROOTCAP_SECRET"</span> &amp;&amp;
+  <span class="c-key">export</span> ROOTCAP_SECRET &amp;&amp;
+  docker run -d -p 3000:3000 -e ROOTCAP_SECRET rootcap
 
 <span class="c-comment"># → open http://localhost:3000</span></code></pre>
 
           <h4>Any Node.js host</h4>
-          <p>Without Docker, build the site and library and run the bundled server:</p>
+          <p>Without Docker, build the site and library and run the bundled server. The generated site/ directory is replaced:</p>
           <pre class="code-block" data-file="terminal"><code>npm ci
 npm run build
-cp -r dist site        <span class="c-comment"># set the site build aside</span>
+rm -rf site &amp;&amp; cp -r dist site  <span class="c-comment"># set the site build aside</span>
 npm run build:lib      <span class="c-comment"># library bundle → dist/</span>
-ROOTCAP_SECRET=your-secret npm start   <span class="c-comment"># serves site/ + API on :3000</span></code></pre>
+<span class="c-key">export</span> ROOTCAP_SECRET=$(node -e <span class="c-str">"console.log(require('crypto').randomBytes(48).toString('hex'))"</span>)
+npm start              <span class="c-comment"># serves site/ + API on :3000</span></code></pre>
 
           <h3>3. Use rootcap in your own project</h3>
           <p>
             Most users don't deploy this repo at all — they install the npm
             package into their existing backend. The core library works in any
-            Node.js framework (Express, Fastify, Hono, Vercel functions,
-            Cloudflare Workers with nodejs_compat, and more). See
+            compatible Node.js framework or Node.js serverless runtime. See
             <a href="#docs-quickstart">Quick start</a> for the full walkthrough;
             with Express it looks like this:
           </p>
@@ -312,8 +332,10 @@ ROOTCAP_SECRET=your-secret npm start   <span class="c-comment"># serves site/ + 
 
 <span class="c-key">const</span> app = express();
 <span class="c-key">const</span> secret = process.env.ROOTCAP_SECRET;
+<span class="c-key">if</span> (!secret || secret.length &lt; 16) <span class="c-key">throw new</span> Error(<span class="c-str">"Set ROOTCAP_SECRET"</span>);
 
-app.use(express.json());
+app.use(express.json({ limit: <span class="c-str">"64kb"</span> }));
+app.use(express.urlencoded({ extended: false, limit: <span class="c-str">"64kb"</span> }));
 
 <span class="c-comment">// Issue challenges</span>
 app.get(<span class="c-str">"/api/challenge"</span>, (_req, res) =&gt; {
@@ -326,11 +348,12 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
 });
 
 <span class="c-comment">// Guard the form submission with the redeem token</span>
-app.post(<span class="c-str">/signup/</span>, (req, res) =&gt; {
-  <span class="c-key">if</span> (!verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>])) {
+app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
+  <span class="c-key">if</span> (!verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> })) {
     <span class="c-key">return</span> res.status(<span class="c-str">403</span>).json({ error: <span class="c-str">"captcha failed"</span> });
   }
   <span class="c-comment">// Process the form…</span>
+  <span class="c-key">return</span> res.json({ success: true });
 });
 
 app.listen(<span class="c-str">3000</span>);</code></pre>

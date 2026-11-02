@@ -1,93 +1,108 @@
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:5f6554f918ee6e482c58ce6f9d4f4d695ce30e254cbe003fdebff0041917f719 -->
-
 # rootcap
 
-A privacy-first, self-hosted captcha alternative powered by proof-of-work.
+**A little proof. A lot of privacy.**
 
-No puzzles, no tracking, no third parties. Your visitors' browsers solve
-tiny cryptographic challenges in the background — no clicking traffic lights,
-no behavioural surveillance.
+rootcap is a self-hosted alternative to CAPTCHA. Instead of asking people to
+solve puzzles, it uses small proof-of-work challenges to make automated requests
+more expensive. Your visitors see a simple verification widget; their browser
+does the work in the background.
 
-**Live demo:** <https://rootcap.vercel.app>
+[![CI](https://github.com/kirasync2748/rootcap/actions/workflows/ci.yml/badge.svg)](https://github.com/kirasync2748/rootcap/actions/workflows/ci.yml)
+[![Publish](https://github.com/kirasync2748/rootcap/actions/workflows/publish.yml/badge.svg)](https://github.com/kirasync2748/rootcap/actions/workflows/publish.yml)
 
-## Features
+---
 
-- **No puzzles** — proof-of-work challenges are solved silently in a Web Worker.
-- **No tracking** — zero cookies, zero fingerprints sent to third parties.
-- **Self-hosted** — runs on your own server or serverless (Vercel, Cloudflare, etc.).
-- **Stateless** — challenge tokens are signed JWTs; no database required.
-- **Featherlight** — zero runtime dependencies.
+[Try the live demo](https://rootcap.vercel.app) ·
+[Source code](https://github.com/kirasync2748/rootcap.git) ·
 
-## Tech stack
+## Why rootcap?
 
-- Node 26.13.0 LTS (also tested on Node 24)
-- TypeScript
-- Vite 8
-- SCSS (dart-sass)
-- Web Workers + Web Crypto API
-- HS256 signed JWTs (node:crypto)
+- **No visual puzzles.** The widget solves challenges in a Web Worker.
+- **Privacy first.** No tracking cookies or third-party verification service.
+- **Yours to host.** Run the API on your own Node.js server.
+- **Stateless.** Signed tokens carry the challenge details; no database is needed.
+- **Lightweight.** The package has no runtime dependencies.
+- **Customisable.** Match the widget's colours and shape to your application.
 
-## Getting started
+## How it works
+
+1. Your server creates a set of challenges and signs their details.
+2. The visitor selects the widget; a Web Worker solves the challenges.
+3. Your server checks the solutions and returns a short-lived redeem token.
+4. Your application checks that token when the form is submitted.
+
+Proof of work raises the cost of automation; it does not identify a person.
+Redeem tokens can be reused until they expire, so applications that require
+one-time use need to record consumed tokens. Apply rate limits to your endpoints.
+
+## Get started
+
+You will need Node.js 24 or later, a modern browser, and a secure context such
+as HTTPS or localhost for Web Crypto. The examples use Express for the server
+and a frontend bundler such as Vite for the widget.
+
+### 1. Install
+
+When rootcap 1.2.0 is available on npm, install it alongside Express:
 
 ```sh
-npm install
-npm run dev        # http://localhost:3000
+npm install rootcap@1.2.0 express
 ```
 
-Set `ROOTCAP_SECRET` to a long random string (see `.env.example`):
+The 1.2.0 code on this branch can also be tried locally using the
+[demo instructions](demo/README.md).
+
+### 2. Add the server routes
+
+Generate a long random `ROOTCAP_SECRET` and keep it private. Use the same secret
+on every server that issues or verifies tokens. The included API handlers require
+at least 16 characters.
 
 ```sh
 export ROOTCAP_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
 ```
 
-## How it works
+Add the following routes to an Express application. The example uses the
+`signup` scope for both proof verification and form submission.
 
-1. **Your server issues challenges** — `generateChallenge(secret, opts)` returns
-   a set of proof-of-work challenges and a signed JWT token.
-2. **The widget solves silently** — a Web Worker finds a nonce for each
-   challenge while the visitor sees a simple checkbox.
-3. **The server verifies the proof** — `validateChallenge(secret, body, opts)`
-   checks the solutions against the signed token and issues a short-lived
-   redeem token for your form.
-
-## Usage
-
-### Install
-
-```sh
-npm install rootcap
-```
-
-### Server
-
-```typescript
+```javascript
+import express from "express";
 import { generateChallenge, validateChallenge, verifyToken } from "rootcap";
 
 const secret = process.env.ROOTCAP_SECRET;
+if (!secret || secret.length < 16) throw new Error("Set ROOTCAP_SECRET");
 
-// Issue challenges
+const app = express();
+app.use(express.json({ limit: "64kb" }));
+app.use(express.urlencoded({ extended: false, limit: "64kb" }));
+
 app.get("/api/challenge", (_req, res) => {
   res.json(generateChallenge(secret, { scope: "signup" }));
 });
 
-// Verify solutions
 app.post("/api/verify", (req, res) => {
-  const result = validateChallenge(secret, req.body, { scope: "signup" });
-  res.json(result);
+  res.json(validateChallenge(secret, req.body, { scope: "signup" }));
 });
 
-// Verify the redeem token on form submission
 app.post("/signup", (req, res) => {
-  if (!verifyToken(secret, req.body["rootcap-token"])) {
+  if (!verifyToken(secret, req.body["rootcap-token"], { scope: "signup" })) {
     return res.status(403).json({ error: "captcha failed" });
   }
-  // Process the form...
+  // Process the form after verifying the token.
+  return res.json({ success: true });
 });
+
+app.listen(3000);
 ```
 
-### Client
+This example leaves static file serving and application-specific form handling
+to your application. Keep the endpoints on the same origin as your form, or
+configure CORS and the form action for your chosen origins.
+
+### 3. Add the widget
+
+Import the widget through your frontend bundler. A bare npm import is not
+resolved by the browser on its own.
 
 ```html
 <script type="module">
@@ -96,193 +111,56 @@ app.post("/signup", (req, res) => {
 
 <form action="/signup" method="POST">
   <input name="email" type="email" required />
-  <rootcap-widget data-scope="signup" name="rootcap-token"></rootcap-widget>
+  <rootcap-widget data-scope="signup" name="rootcap-token" required></rootcap-widget>
   <button type="submit">Sign up</button>
 </form>
 ```
 
-### Demo project
+The widget contributes the redeem token to the form. `required` enables native
+form validation; your server must still verify the token. If your API is on a
+different origin, set `data-api` to its base URL and allow the frontend origin
+through CORS, including the JSON POST preflight.
 
-A complete working example lives in the `demo/` directory. See
-[`demo/README.md`](demo/README.md) for instructions.
+## Configuration
 
-## Testing
+| Option       | Default   | What it does                                    |
+| ------------ | --------- | ----------------------------------------------- |
+| `count`      | `50`      | Number of challenges, from 1 to 1,000.          |
+| `difficulty` | `4`       | Leading zero bits required, from 1 to 16.       |
+| `expiresMs`  | `600000`  | Challenge lifetime in milliseconds.             |
+| `tokenTtlMs` | `1200000` | Redeem token lifetime in milliseconds.          |
+| `scope`      | none      | Binds a token to an operation such as `signup`. |
 
-```sh
-npm test            # run tests once
-npm run test:watch  # run tests in watch mode
-npm run typecheck   # type-check without emitting
-npm run lint        # run ESLint
-npm run format      # format with Prettier
-npm run format:check # check formatting without writing
+The widget sends `data-scope` as a query parameter. Your server chooses its own
+scope; `createApiHandler` ignores that parameter. Match the server's configured
+scope to the widget and check it again when redeeming the token. The widget's
+scope defaults to `default`; the optional Node adapter defaults to `demo`.
+
+## Make it yours
+
+Set CSS custom properties on the widget to suit your colours and design:
+
+```css
+rootcap-widget {
+  --rc-primary: #4f46e5;
+  --rc-verified-surface: #eef2ff;
+  --rc-on-primary: #ffffff;
+  --rc-focus: #3730a3;
+  --rc-radius: 8px;
+}
 ```
 
-## CI/CD
+Listen for `rootcap:verified`, `rootcap:progress`, `rootcap:error`,
+`rootcap:expired` and `rootcap:reset` to respond to verification changes.
+The widget also exposes `execute()`, `getResponse()` and `reset()` for
+applications that need programmatic control.
 
-A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push and
-pull request. It checks formatting, linting, type-checking, and tests.
+## Explore the project
 
-## Deployment
+- [Standalone demo](demo/README.md) — run a complete example using the local package.
+- [Website documentation](https://rootcap.vercel.app/docs) — browse the API and widget guide.
+- [Changelog](CHANGELOG.md) — see what changed in each version.
 
-### Vercel
-
-1. Push this repo to GitHub.
-2. Import the repo in Vercel.
-3. Set `ROOTCAP_SECRET` in Vercel environment variables.
-4. Deploy — the included `vercel.json` and `api/` directory are pre-configured.
-
-The app is live at <https://rootcap.vercel.app>.
-
-### Node.js server
-
-```typescript
-import { generateChallenge, validateChallenge } from "rootcap";
-import http from "node:http";
-
-const secret = process.env.ROOTCAP_SECRET;
-
-http
-  .createServer((req, res) => {
-    if (req.url === "/api/challenge") {
-      res.end(JSON.stringify(generateChallenge(secret)));
-    }
-  })
-  .listen(3000);
-```
-
-### Docker (self-host the demo site)
-
-The included `Dockerfile` builds the website and the library, then serves both
-from a single container — static site plus `/api/challenge`, `/api/verify` and
-`/api/stats` (`server.mjs`). No database or volume required.
-
-```sh
-git clone https://github.com/kirasync2748/rootcap.git
-cd rootcap
-docker build -t rootcap .
-docker run -d -p 3000:3000 -e ROOTCAP_SECRET=your-secret rootcap
-# → open http://localhost:3000
-```
-
-Without Docker you can build and serve it on any Node.js 26.13.0 host:
-
-```sh
-npm ci
-npm run build
-cp -r dist site        # set the site build aside
-npm run build:lib     # library bundle → dist/
-ROOTCAP_SECRET=your-secret npm start   # serves site/ + API on :3000
-```
-
-## Publishing to npm
-
-This project is structured as an npm package (v1.1.0). The `lib/` directory
-contains the core library and widget; `src/` contains the demo website.
-
-### Build the package
-
-```sh
-npm run build:lib
-```
-
-This compiles the library to `dist/` using Vite library mode, producing ESM
-bundles for both the core library and the widget.
-
-### Publish with a trusted publisher
-
-Configure the rootcap package on npm → Settings → Trusted Publisher → GitHub Actions:
-
-- Organization or user: `kirasync2748`
-- Repository: `rootcap`
-- Workflow filename: `publish.yml`
-- Environment: leave blank (the workflow does not use an environment).
-
-Keep “Require two-factor authentication and disallow bypass 2fa tokens” enabled.
-No npm token secret is needed. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
-This npm account setting must be saved by a package maintainer before the first release.
-
-After merging the release changes into main, create and push the matching tag:
-
-```sh
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-The workflow tests Node 24 and 26.13.0, checks formatting, lint and types,
-builds the website, library, declarations and demo, and checks the package.
-Only after these checks pass does it verify the tag matches package.json
-and publish with OIDC and provenance. A failed check prevents publishing.
-The `prepack` hook also builds JavaScript and declarations for local tarballs.
-
-### Security and compatibility
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:f42c9c033df101d65fde06f236259e54b5d2cbc1eeaba23ffd4db4841313ef42 -->
-
-Version 1.1.0 retains Node >=24 compatibility.
-
-<!-- /coderabbit-ai-generated:v1 -->
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:7faa61aba1cad3d315c8fa584e97f1581a7689474b66578dad0ed85f85fa0eef -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:d16a9ca8bac712d8a922024135824f1b85c168fed9c6a4ca5cc51c912f6238ea -->
-
-Development, Docker and publishing use Node 26.13.0. Challenge counts must be integers from 1–1000.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- /coderabbit-ai-generated:v1 -->
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:2c1838b346bb20c3b03de4cd0d28067f668e5861b69186c571c6e830384f80b9 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:8e450556df94384ac5835a4e8155438e06b17789ffedc6368329c9121cff45f0 -->
-
-Difficulty must be an integer from 1–16, and lifetimes must be positive safe integers.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-Challenges with higher difficulties are rejected, including previously issued
-challenges. Generation throws RangeError if the encoded token exceeds 16,384
-characters. Invalid options throw RangeError; malformed signed claims fail verification.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-Production API handlers require ROOTCAP_SECRET (at least 16 characters).
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:3bb2a551e2ed53568e7305e69094893c4d8ac11145be2569f4776993fa0e8d50 -->
-
-The development fallback key is used when `NODE_ENV` is `development` and
-`ROOTCAP_SECRET` is missing or shorter than 16 characters. Do not set
-`NODE_ENV=development` in production.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-Use `verifyToken(secret, token, { scope: "signup" })` to bind redemption to
-an operation. Tokens remain stateless and reusable until expiry: applications
-requiring one-time redemption must track consumed tokens server-side. Proof of
-work raises the cost of automation; it does not establish a user's identity.
-Add application-level rate limits appropriate to your deployment.
-
-The widget participates in native FormData, exposes `reset()`, resets on form
-reset and token expiry, and emits `rootcap:verified` and `rootcap:reset` events.
-
-### What gets published
-
-- `dist/` — compiled ESM bundles and generated TypeScript declaration files
-
-Users can import from two entry points:
-
-| Import                                        | Description           |
-| --------------------------------------------- | --------------------- |
-| `import { generateChallenge } from "rootcap"` | Core library          |
-| `import "rootcap/widget"`                     | Widget custom element |
-
-<!-- /coderabbit-ai-generated:v1 -->
+The package provides three entry points: `rootcap` for the core API,
+`rootcap/widget` for the custom element, and `rootcap/server` for the optional
+Node HTTP adapter.

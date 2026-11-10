@@ -3,7 +3,6 @@ import "./app.scss";
 import "./docs.scss";
 import { renderHome } from "./pages/home";
 import { renderDocs } from "./pages/docs";
-import { renderDashboard } from "./pages/dashboard";
 import { renderNotFound } from "./pages/not-found";
 import { renderServerError } from "./pages/server-error";
 
@@ -34,11 +33,8 @@ function navigate() {
 
   try {
     if (path === "/docs") {
-      renderDocs(app);
+      cleanup = renderDocs(app);
       document.body.dataset.page = "docs";
-    } else if (path === "/dashboard") {
-      cleanup = renderDashboard(app);
-      document.body.dataset.page = "dashboard";
     } else if (path === "/" || path === "") {
       cleanup = renderHome(app);
       document.body.dataset.page = "home";

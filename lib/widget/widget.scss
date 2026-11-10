@@ -148,6 +148,12 @@
   }
 }
 
+.rc-progress {
+  width: 70px;
+  height: 6px;
+  accent-color: var(--rc-primary);
+}
+
 @keyframes rc-spin {
   to {
     transform: rotate(360deg);

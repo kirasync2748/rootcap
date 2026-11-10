@@ -6,7 +6,7 @@ export function renderHome(app: HTMLElement) {
     <section class="hero">
       <div class="hero-dots" aria-hidden="true"></div>
       <div class="container hero-inner">
-        <a class="eyebrow release-badge" href="/docs">Introducing rootcap 1.2 <span>More control. Same privacy. ↗</span></a>
+        <a class="eyebrow release-badge" href="/docs">Introducing rootcap 1.3 <span>More control. Same privacy. ↗</span></a>
         <h1 class="hero-title">A little proof.<br><span class="grad">A lot of privacy.</span></h1>
         <p class="hero-lead">
           Add a quiet layer of protection with proof-of-work challenges solved
@@ -19,7 +19,7 @@ export function renderHome(app: HTMLElement) {
         </div>
         <div class="install-command"><span aria-hidden="true">$</span><code>npm install rootcap</code><button type="button" id="copy-install" aria-label="Copy install command">Copy</button></div>
         <div class="hero-stats">
-          <div class="stat"><strong>0</strong><span>third parties</span></div>
+          <div class="stat"><strong>0</strong><span>verification services</span></div>
           <div class="stat"><strong>0</strong><span>cookies set</span></div>
           <div class="stat"><strong>100%</strong><span>open source</span></div>
         </div>
@@ -51,14 +51,14 @@ export function renderHome(app: HTMLElement) {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
             </div>
             <h3>Self-hosted</h3>
-            <p>Run it on your own server or deploy serverless. The core library is stateless — no database required.</p>
+            <p>Run it on your own server or deploy serverless. The default API is stateless; one-time use can use a shared store.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
             <h3>Featherlight</h3>
-            <p>Zero runtime dependencies. The widget is a fraction of the size of traditional captcha scripts.</p>
+            <p>Zero runtime dependencies. Bundle the widget with your application and measure its size in your own build.</p>
           </article>
         </div>
       </div>
@@ -73,9 +73,9 @@ export function renderHome(app: HTMLElement) {
             <h3>rootcap</h3>
             <ul>
               <li><span class="check" aria-hidden="true"></span> Silent proof-of-work</li>
-              <li><span class="check" aria-hidden="true"></span> No user data collected</li>
+              <li><span class="check" aria-hidden="true"></span> No tracking cookies or fingerprints</li>
               <li><span class="check" aria-hidden="true"></span> Runs on your infrastructure</li>
-              <li><span class="check" aria-hidden="true"></span> Zero dependencies</li>
+              <li><span class="check" aria-hidden="true"></span> Zero runtime dependencies</li>
               <li><span class="check" aria-hidden="true"></span> Open source</li>
             </ul>
           </div>
@@ -101,7 +101,7 @@ export function renderHome(app: HTMLElement) {
           <li class="step">
             <span class="step-number">1</span>
             <h3>Your server issues challenges</h3>
-            <p>A signed token is created containing proof-of-work parameters. No state is stored — the signature is the source of truth.</p>
+            <p>A signed token carries the proof-of-work parameters. The default flow is stateless; one-time use requires shared state.</p>
           </li>
           <li class="step">
             <span class="step-number">2</span>
@@ -111,9 +111,10 @@ export function renderHome(app: HTMLElement) {
           <li class="step">
             <span class="step-number">3</span>
             <h3>The server verifies the proof</h3>
-            <p>Solutions are checked against the signed token. On success a short-lived redeem token is issued for your form.</p>
+            <p>Solutions are checked against the signed token. Your server must check the short-lived redeem token when the form is submitted.</p>
           </li>
         </ol>
+        <p>Proof of work raises the cost of automation; it does not identify a person. Apply rate limits and verify tokens on the server.</p>
       </div>
     </section>
 
@@ -129,8 +130,13 @@ export function renderHome(app: HTMLElement) {
           </div>
           <div class="form-row" id="demo-verify-row">
             <label>Verification</label>
-            <rootcap-widget data-scope="demo" name="rootcap-token" required></rootcap-widget>
+            <rootcap-widget data-scope="demo" data-timeout="30000" name="rootcap-token" required></rootcap-widget>
             <p class="verification-error" id="demo-verify-error" role="alert"></p>
+          </div>
+          <p data-verification-status role="status" aria-live="polite"></p>
+          <div class="demo-controls">
+            <button type="button" class="btn btn-ghost" data-cancel-verification>Cancel verification</button>
+            <button type="button" class="btn btn-ghost" data-reset-verification>Reset verification</button>
           </div>
           <button type="submit" class="btn btn-primary btn-block">Submit</button>
         </form>
@@ -151,24 +157,24 @@ export function renderHome(app: HTMLElement) {
         <p class="section-eyebrow">Get started</p>
         <h2 class="section-title">Up and running in minutes</h2>
         <div class="code-card">
-          <pre class="code-block" data-file="example.ts"><code><span class="c-comment">// Server — create a challenge</span>
-<span class="c-key">import</span> { generateChallenge, validateChallenge } <span class="c-key">from</span> <span class="c-str">"rootcap"</span>;
+          <pre class="code-block" data-file="server.js"><code><span class="c-key">import</span> express <span class="c-key">from</span> <span class="c-str">"express"</span>;
+<span class="c-key">import</span> { verifyToken } <span class="c-key">from</span> <span class="c-str">"rootcap"</span>;
+<span class="c-key">import</span> { createExpressMiddleware } <span class="c-key">from</span> <span class="c-str">"rootcap/express"</span>;
 
 <span class="c-key">const</span> secret = process.env.ROOTCAP_SECRET;
-
-app.get(<span class="c-str">"/api/challenge"</span>, (_req, res) =&gt; {
-  res.json(generateChallenge(secret, { scope: <span class="c-str">"signup"</span> }));
+<span class="c-key">if</span> (!secret || secret.length &lt; 16) <span class="c-key">throw new</span> Error(<span class="c-str">"Set ROOTCAP_SECRET"</span>);
+<span class="c-key">const</span> app = express();
+app.use(createExpressMiddleware({ secret, scope: <span class="c-str">"signup"</span> }));
+app.use(express.urlencoded({ extended: false, limit: <span class="c-str">"64kb"</span> }));
+app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
+  <span class="c-key">const</span> token = req.body?.[<span class="c-str">"rootcap-token"</span>];
+  <span class="c-key">if</span> (typeof token !== <span class="c-str">"string"</span> || !verifyToken(secret, token, { scope: <span class="c-str">"signup"</span> })) {
+    <span class="c-key">return</span> res.status(403).json({ error: <span class="c-str">"verification_failed"</span> });
+  }
+  <span class="c-key">return</span> res.json({ success: true });
 });
-
-app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
-  <span class="c-key">const</span> result = validateChallenge(secret, req.body, {
-    scope: <span class="c-str">"signup"</span>,
-  });
-  res.json(result);
-});
-
-<span class="c-comment">// Client — drop in the widget</span>
-<span class="c-str">&lt;rootcap-widget data-scope="signup"&gt;&lt;/rootcap-widget&gt;</span></code></pre>
+app.listen(3000);</code></pre>
+          <p>Install Express separately. The adapter must run before body parsers; serve the bundled form on the same origin or configure CORS.</p>
         </div>
       </div>
     </section>

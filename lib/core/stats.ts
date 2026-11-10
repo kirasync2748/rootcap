@@ -39,11 +39,3 @@ export function recordVerify(success: boolean): void {
 export function getStats(): Stats & { uptime: number } {
   return { ...stats, uptime: Date.now() - stats.startedAt };
 }
-
-export function resetStats(): void {
-  stats.challengesRequested = 0;
-  stats.verificationsAttempted = 0;
-  stats.verificationsSucceeded = 0;
-  stats.verificationsFailed = 0;
-  stats.startedAt = Date.now();
-}

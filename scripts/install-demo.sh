@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exercise the exact npm package archive while 1.2.0 awaits publication.
+# Exercise the exact npm package archive before publication.
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 package_dir="$(mktemp -d)"

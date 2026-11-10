@@ -83,3 +83,80 @@ describe("shared API adapter", () => {
     expect(await pending).toEqual({ text: "😀" });
   });
 });
+
+describe("adapter extension hooks", () => {
+  it("uses configured challenge settings and rejects rate-limited requests", async () => {
+    const events: { operation: string; success: boolean }[] = [];
+    const api = createApiHandler({
+      secret,
+      challenge: { count: 2, difficulty: 1 },
+      rateLimit: (_req, operation) => operation !== "verify",
+      onEvent: (event) => {
+        events.push(event);
+      },
+    });
+    const local = createServer((req, res) => {
+      void api(req, res);
+    });
+    await new Promise<void>((resolve) => local.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(local.address() as { port: number }).port}`;
+    try {
+      const challenge = await (await fetch(url + "/api/challenge")).json();
+      expect(challenge.challenges).toHaveLength(2);
+      expect(challenge.challenges[0].d).toBe(1);
+      const response = await fetch(url + "/api/verify", { method: "POST", body: "{}" });
+      expect(response.status).toBe(429);
+      expect(await response.json()).toEqual({ error: "rate_limited" });
+      expect(events.map(({ operation, success }) => ({ operation, success }))).toEqual([
+        { operation: "challenge", success: true },
+        { operation: "verify", success: false },
+      ]);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        local.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+});
+
+describe("stateful adapter integration", () => {
+  it("returns 503 when one-time storage fails and does not issue a token", async () => {
+    const { createProtection } = await import("../lib/core/protection");
+    const protection = createProtection({
+      keys: [secret],
+      consumeChallenges: true,
+      store: {
+        async consume() {
+          throw new Error("storage unavailable");
+        },
+      },
+    });
+    const api = createApiHandler({
+      protection,
+      scope: "demo",
+      challenge: { count: 1, difficulty: 1 },
+    });
+    const local = createServer((req, res) => {
+      void api(req, res);
+    });
+    await new Promise<void>((resolve) => local.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(local.address() as { port: number }).port}`;
+    try {
+      const challenge = await (await fetch(url + "/api/challenge")).json();
+      const c = challenge.challenges[0];
+      let nonce = 0;
+      while (!verifySolution(c.s, nonce, c.d)) nonce++;
+      const response = await fetch(url + "/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: challenge.token, solutions: [nonce] }),
+      });
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ error: "service_unavailable" });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        local.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+});

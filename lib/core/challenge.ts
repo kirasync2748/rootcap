@@ -11,6 +11,8 @@ export interface ChallengeOptions {
   expiresMs?: number;
   /** Optional scope string bound to the challenge. */
   scope?: string;
+  /** Optional server-chosen action or transaction binding. */
+  context?: string;
 }
 
 export interface Challenge {
@@ -33,6 +35,8 @@ export interface VerifyOptions {
   scope?: string;
   /** Time-to-live for the redeem token in ms (default 1200000 = 20 min). */
   tokenTtlMs?: number;
+  /** Must match the context used to create the challenge. */
+  context?: string;
 }
 
 export interface ValidationResult {
@@ -58,6 +62,8 @@ export function deriveSalt(seed: string, index: number): string {
 export function generateChallenge(secret: string, opts: ChallengeOptions = {}): ChallengeResponse {
   if (opts.scope !== undefined && typeof opts.scope !== "string")
     throw new RangeError("scope must be a string");
+  if (opts.context !== undefined && typeof opts.context !== "string")
+    throw new RangeError("context must be a string");
   const count = opts.count ?? 50;
   const difficulty = opts.difficulty ?? 4;
   const expiresMs = opts.expiresMs ?? 600_000;
@@ -87,6 +93,7 @@ export function generateChallenge(secret: string, opts: ChallengeOptions = {}): 
     iat,
     exp,
     scope: opts.scope,
+    context: opts.context,
   });
   if (token.length > MAX_JWT_LENGTH) throw new RangeError("challenge token exceeds maximum length");
 
@@ -120,6 +127,7 @@ export function validateChallenge(
     iat: number;
     exp: number;
     scope?: string;
+    context?: string;
   }>(secret, b.token);
 
   if (
@@ -135,12 +143,16 @@ export function validateChallenge(
     !Number.isSafeInteger(payload.exp) ||
     !Number.isSafeInteger(payload.iat) ||
     payload.exp <= payload.iat ||
-    (payload.scope !== undefined && typeof payload.scope !== "string")
+    (payload.scope !== undefined && typeof payload.scope !== "string") ||
+    (payload.context !== undefined && typeof payload.context !== "string")
   )
     return { success: false, reason: "invalid_token" };
   if (Date.now() >= payload.exp) return { success: false, reason: "expired" };
   if (opts.scope !== undefined && payload.scope !== opts.scope) {
     return { success: false, reason: "scope_mismatch" };
+  }
+  if (opts.context !== undefined && payload.context !== opts.context) {
+    return { success: false, reason: "context_mismatch" };
   }
   if (b.solutions.length !== payload.count) {
     return { success: false, reason: "invalid_solutions" };
@@ -171,6 +183,7 @@ export function validateChallenge(
     iat: now,
     exp: now + tokenTtlMs,
     scope: payload.scope,
+    context: payload.context,
   });
 
   return {
@@ -187,12 +200,16 @@ export function validateChallenge(
 export function verifyToken(
   secret: string,
   token: string,
-  opts: Pick<VerifyOptions, "scope"> = {},
+  opts: Pick<VerifyOptions, "scope" | "context"> = {},
 ): boolean {
-  const payload = verifyJWT<{ type?: string; exp: number; scope?: string }>(secret, token);
+  const payload = verifyJWT<{ type?: string; exp: number; scope?: string; context?: string }>(
+    secret,
+    token,
+  );
   if (!payload) return false;
   if (payload.type !== "redeem") return false;
   if (!Number.isSafeInteger(payload.exp) || Date.now() >= payload.exp) return false;
   if (opts.scope !== undefined && payload.scope !== opts.scope) return false;
+  if (opts.context !== undefined && payload.context !== opts.context) return false;
   return true;
 }

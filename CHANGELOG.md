@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+
+- Add opt-in one-time challenge and redeem-token consumption with an atomic
+  shared store, plus a Redis consumption adapter and Redis rate limiter.
+- Support signing-key rotation and server-selected context binding.
+- Add `rootcap/edge` with Web Crypto core APIs and a Fetch handler, and
+  `rootcap/express` with Express-compatible middleware.
+- Add light, balanced, and strict challenge profiles and a local proof-of-work
+  benchmark.
+- Add configurable widget timeouts, cancellation, work limits, automatic
+  verification on form focus, message customization, and separately hosted workers.
+- Add rate-limit and event hooks to the Node adapter and rate-limit hooks to the
+  Fetch handler.
+
+### Changed
+
+- Improve widget progress feedback and add cancellation, reset, and timeout
+  feedback to the website and standalone demos.
+- Refresh the README and website documentation, including searchable navigation.
+- Remove the website dashboard; the process-local Node statistics API remains.
+
+### Compatibility
+
+- Keep the synchronous Node core and stateless, reusable tokens as defaults.
+  One-time consumption is opt-in and requires shared state.
+- Retain Node.js 24 and later support and zero runtime dependencies.
+
 ## 1.2.0
 
 - Add the optional `rootcap/server` Node HTTP adapter with exact routing, bounded JSON, method guards, consistent errors and no-store responses across development, Vercel and self hosting.

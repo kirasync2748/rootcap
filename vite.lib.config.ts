@@ -15,8 +15,11 @@ export default defineConfig({
     lib: {
       entry: {
         "core/index": "lib/core/index.ts",
+        "edge/index": "lib/edge/index.ts",
         "server/index": "lib/api/server.ts",
+        "integrations/express": "lib/integrations/express.ts",
         "widget/widget": "lib/widget/widget.ts",
+        "worker/solver": "lib/widget/solver.worker.ts",
       },
       formats: ["es"],
     },

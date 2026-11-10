@@ -300,3 +300,109 @@ body[data-page="docs"] {
     padding: 56px 0 40px;
   }
 }
+
+// Documentation workspace
+.docs-version {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--primary-dark);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+.docs-content {
+  min-width: 0;
+}
+.docs-search-box {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  margin-bottom: 20px;
+}
+.docs-search-box label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.docs-search-box input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--surface);
+  color: var(--ink);
+}
+.docs-search-box input:focus-visible,
+.docs-table-scroll:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+#docs-search-status {
+  font-size: 0.85rem;
+  margin: 8px 0 0;
+  color: var(--ink-2);
+}
+#docs-search-status:empty {
+  display: none;
+}
+.docs-start-links {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+.docs-start-links a {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.docs-start-links a:hover {
+  border-color: var(--primary);
+}
+.docs-start-links strong,
+.docs-start-links span {
+  display: block;
+}
+.docs-start-links span {
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+}
+.docs-table-scroll {
+  overflow-x: auto;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.docs-table-scroll .docs-table {
+  margin: 0;
+}
+.docs-section[hidden],
+.docs-nav-link[hidden],
+.docs-mobile-nav-list[hidden] {
+  display: none;
+}
+.docs-section {
+  scroll-margin-top: 100px;
+}
+@media (min-width: 1100px) {
+  .docs-start-links {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-start-links a {
+    transition: none;
+  }
+}
+
+.docs-mobile-nav-list {
+  max-height: 55vh;
+  overflow-y: auto;
+}

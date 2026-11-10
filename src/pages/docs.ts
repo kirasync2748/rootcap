@@ -16,15 +16,15 @@ export function renderDocs(app: HTMLElement) {
   app.innerHTML = `
     <div class="docs-hero">
       <div class="container">
-        <p class="section-eyebrow">Documentation</p>
-        <h1 class="docs-hero-title">rootcap docs</h1>
-        <p class="docs-hero-lead">Everything you need to integrate privacy-first captcha into your app.</p>
+        <p class="section-eyebrow">Developer documentation <span class="docs-version">v1.3.0</span></p>
+        <h1 class="docs-hero-title">Build with rootcap.</h1>
+        <p class="docs-hero-lead">Install rootcap, protect your forms, and configure your deployment.</p>
       </div>
     </div>
 
     <div class="container docs-layout">
       <div class="docs-mobile-nav">
-        <button class="docs-mobile-nav-toggle" id="docs-mobile-nav-toggle" aria-expanded="false">
+        <button class="docs-mobile-nav-toggle" id="docs-mobile-nav-toggle" aria-controls="docs-mobile-nav-list" aria-expanded="false">
           <span>Contents</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -39,6 +39,16 @@ export function renderDocs(app: HTMLElement) {
       </aside>
 
       <div class="docs-content">
+        <div class="docs-search-box">
+          <label for="docs-search">Find a guide or API</label>
+          <input id="docs-search" type="search" placeholder="Try scope, widget, or deployment" autocomplete="off" />
+          <p id="docs-search-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="docs-start-links" aria-label="Start here">
+          <a href="#docs-quickstart"><strong>Start building</strong><span>Protect your first form ↗</span></a>
+          <a href="#docs-server"><strong>Server API</strong><span>Issue and verify proofs ↗</span></a>
+          <a href="#docs-deploy"><strong>Deployment</strong><span>Host your site and API ↗</span></a>
+        </div>
         <section id="docs-intro" class="docs-section">
           <h2>Introduction</h2>
           <p>
@@ -52,12 +62,10 @@ export function renderDocs(app: HTMLElement) {
             The server generates a batch of challenges and signs them with an HS256
             JWT. The widget solves them inside a Web Worker, submits the solutions,
             and receives a short-lived redeem token that you can validate when the
-            form is submitted. The entire flow is <strong>stateless</strong> — no
-            database, no token store, no session state on the server.
+            form is submitted. The default flow is <strong>stateless</strong>. Enable the optional shared consumption store when you need one-time challenges or redeem tokens.
           </p>
           <div class="callout">
-            <strong>Design philosophy:</strong> prove that a real browser did
-            computational work, without collecting a single byte of user data.
+            <strong>Design philosophy:</strong> raise the cost of automated requests without tracking visitors. Proof of work does not identify a person.
           </div>
         </section>
 
@@ -74,9 +82,8 @@ npm install rootcap
 yarn add rootcap</code></pre>
           <p>
             The package ships as ESM with zero runtime dependencies. The core library
-            requires a compatible Node.js runtime; the widget uses Web Workers and Web
-            Crypto in a secure browser context. Version 1.2.0 must be published before
-            it can be installed from the npm registry.
+            requires Node.js 24 or later; the widget requires form-associated custom elements,
+            Web Workers and Web Crypto in a secure browser context.
           </p>
         </section>
 
@@ -88,7 +95,7 @@ yarn add rootcap</code></pre>
           <pre class="code-block" data-file="terminal"><code><span class="c-comment"># Generate a secret</span>
 node -e <span class="c-str">"console.log(require('crypto').randomBytes(48).toString('hex'))"</span>
 
-<span class="c-comment"># .env</span>
+<span class="c-comment"># Set in your server environment or load with node --env-file=.env</span>
 ROOTCAP_SECRET=your-generated-secret-here</code></pre>
 
           <h3>2. Add server endpoints</h3>
@@ -109,7 +116,8 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
   res.json(validateChallenge(secret, req.body, { scope: <span class="c-str">"signup"</span> }));
 });
 app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
-  <span class="c-key">if</span> (!verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> })) {
+  <span class="c-key">const</span> token = req.body?.[<span class="c-str">"rootcap-token"</span>];
+  <span class="c-key">if</span> (typeof token !== <span class="c-str">"string"</span> || !verifyToken(secret, token, { scope: <span class="c-str">"signup"</span> })) {
     <span class="c-key">return</span> res.status(403).json({ error: <span class="c-str">"captcha failed"</span> });
   }
   <span class="c-key">return</span> res.json({ success: true });
@@ -154,6 +162,7 @@ app.listen(3000);</code></pre>
               <tr><td><code>difficulty</code></td><td>number</td><td>4</td><td>Leading zero bits required per hash.</td></tr>
               <tr><td><code>expiresMs</code></td><td>number</td><td>600000</td><td>Token lifetime in milliseconds (10 min).</td></tr>
               <tr><td><code>scope</code></td><td>string</td><td>—</td><td>Optional scope bound to the challenge.</td></tr>
+              <tr><td><code>context</code></td><td>string</td><td>—</td><td>Optional server-selected transaction or action binding; do not include secrets.</td></tr>
             </tbody>
           </table>
           <pre class="code-block" data-file="server.ts"><code><span class="c-key">const</span> challenge = generateChallenge(secret, {
@@ -173,7 +182,8 @@ app.listen(3000);</code></pre>
             <tbody>
               <tr><td><code>body.token</code></td><td>string</td><td>The challenge JWT from generateChallenge.</td></tr>
               <tr><td><code>body.solutions</code></td><td>number[]</td><td>Array of nonces, one per challenge.</td></tr>
-              <tr><td><code>opts.scope</code></td><td>string</td><td>Must match the challenge scope.</td></tr>
+              <tr><td><code>opts.scope</code></td><td>string</td><td>Expected server-selected challenge scope.</td></tr>
+              <tr><td><code>opts.context</code></td><td>string</td><td>Expected server-selected context, if used.</td></tr>
               <tr><td><code>opts.tokenTtlMs</code></td><td>number</td><td>Redeem token lifetime (default 1200000 = 20 min).</td></tr>
             </tbody>
           </table>
@@ -186,6 +196,7 @@ app.listen(3000);</code></pre>
               <tr><td><code>missing_solutions</code></td><td>Solutions missing or not an array.</td></tr>
               <tr><td><code>invalid_token</code></td><td>JWT signature mismatch or malformed.</td></tr>
               <tr><td><code>scope_mismatch</code></td><td>Token scope does not match opts.scope.</td></tr>
+              <tr><td><code>context_mismatch</code></td><td>Token context does not match opts.context.</td></tr>
               <tr><td><code>expired</code></td><td>Challenge token has expired.</td></tr>
               <tr><td><code>invalid_solutions</code></td><td>Wrong number of solutions.</td></tr>
               <tr><td><code>invalid_solution</code></td><td>A nonce does not satisfy the proof-of-work.</td></tr>
@@ -193,10 +204,15 @@ app.listen(3000);</code></pre>
           </table>
 
           <h3>verifyToken(secret, token, options?)</h3>
-          <p>Pass <code>{ scope: "signup" }</code> to enforce the redemption scope. Tokens are reusable until expiry; track consumed tokens in your application if you need one-time use. Call the widget’s <code>reset()</code> method to clear verification.</p>
-          <p>Validates a previously issued redeem token. Returns <code>true</code> or <code>false</code>.</p>
+          <p>Pass <code>{ scope: "signup" }</code> to enforce the redemption scope. The default tokens are reusable until expiry; use createProtection with a shared store for optional one-time use. Call the widget’s <code>reset()</code> method to clear verification.</p>
+          <p>Validates a previously issued redeem token. Returns <code>true</code> or <code>false</code>. Supply the expected server-controlled <code>scope</code> and <code>context</code> on both validation and redemption when using them. Signed token contents are readable; never put secrets in them.</p>
           <pre class="code-block" data-file="server.ts"><code><span class="c-key">const</span> ok = verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> });
 <span class="c-key">if</span> (!ok) <span class="c-key">return</span> res.status(<span class="c-str">403</span>).json({ error: <span class="c-str">"captcha failed"</span> });</code></pre>
+          <h3>Replay protection and key rotation</h3>
+          <p><code>createProtection({ keys, store, consumeChallenges, consumeTokens })</code> adds optional one-time use and rotation. The first key signs; previous keys verify existing tokens. Retain previous keys until their tokens expire. One-time use requires an atomic shared store across all instances; <code>createRedisConsumptionStore(client)</code> supports a connected node-redis-compatible client. Configure durability and prevent early eviction of consumption records.</p>
+          <p>Use the same protection configuration for issuing, validating and redeeming; validation and redemption are asynchronous. <code>createApiHandler({ protection, scope })</code> can handle proof routes, but your protected application route must still call <code>await protection.verifyToken(token, { scope })</code>. A successful one-time redemption consumes the token even if later application work fails.</p>
+          <p>Rate-limit challenge and verification endpoints using trusted client identity and shared state. The Node and Fetch adapters accept a <code>rateLimit</code> callback; <code>createRedisRateLimiter</code> provides a fixed-window helper. The Node adapter's <code>onEvent</code> hook supports application monitoring.</p>
+          <p>Other entry points: <code>rootcap/express</code> provides Express middleware; <code>rootcap/edge</code> provides asynchronous Web Crypto and Fetch APIs. Test the target runtime before deployment.</p>
         </section>
 
         <section id="docs-widget" class="docs-section">
@@ -210,11 +226,17 @@ app.listen(3000);</code></pre>
               <tr><td><code>data-api</code></td><td>same origin</td><td>Base URL for the challenge / verify endpoints.</td></tr>
               <tr><td><code>data-scope</code></td><td>"default"</td><td>Sent as a challenge query parameter; configure the matching scope on the server and enforce it when redeeming. The Node adapter ignores the query parameter.</td></tr>
               <tr><td><code>name</code></td><td>"rootcap-token"</td><td>Form field name for the redeem token.</td></tr>
+              <tr><td><code>data-auto</code></td><td>off</td><td>Start verification when the associated form receives focus.</td></tr>
+              <tr><td><code>data-timeout</code></td><td>60000</td><td>Verification timeout in milliseconds, from 1 to 600000.</td></tr>
+              <tr><td><code>data-max-work</code></td><td>unlimited</td><td>Maximum estimated hash attempts; not a hard time limit.</td></tr>
+              <tr><td><code>data-worker-src</code></td><td>inline worker</td><td>URL of a separately hosted solver module.</td></tr>
+              <tr><td><code>data-style-nonce</code></td><td>none</td><td>Nonce on the widget style element for a compatible content security policy.</td></tr>
             </tbody>
           </table>
 
-          <h3>Controls in 1.2.0</h3>
-          <p>Call <code>execute()</code> to start verification, <code>getResponse()</code> to read the current token, and optionally <code>reset()</code> to clear it. Verification also clears on form reset and expiry. Add <code>required</code> for native form validation or <code>disabled</code> to pause verification.</p>
+          <h3>Widget controls</h3>
+          <p>Call <code>execute()</code> to start verification, <code>getResponse()</code> to read the current token, and <code>cancel()</code> or <code>reset()</code> to stop work and clear it. Verification also clears on form reset and expiry. Add <code>required</code> for native form validation or <code>disabled</code> to pause verification.</p>
+          <p>Set the <code>messages</code> property to customize visible and accessible labels. For a separately hosted worker, serve the packaged <code>rootcap/worker/solver.js</code> asset and configure your content security policy for scripts, workers, styles, and connections.</p>
           <p>The optional Node adapter is available from <code>rootcap/server</code> as <code>createApiHandler({ secret, scope })</code>. It handles challenge, verify and stats requests; unknown routes return false. Configure the scope on the server.</p>
           <h3>Events</h3>
           <table class="docs-table">
@@ -229,7 +251,7 @@ app.listen(3000);</code></pre>
           </table>
           <pre class="code-block" data-file="client.ts"><code>document.querySelector(<span class="c-str">"rootcap-widget"</span>)
   .addEventListener(<span class="c-str">"rootcap:verified"</span>, (e) =&gt; {
-    console.log(<span class="c-str">"Token:"</span>, e.detail.token);
+    <span class="c-comment">// Submit e.detail.token to your protected server route.</span>
   });</code></pre>
 
           <h3>Theming</h3>
@@ -257,10 +279,9 @@ app.listen(3000);</code></pre>
               <tr><td><code>tokenTtlMs</code></td><td>1200000</td><td>—</td><td>How long the redeem token is valid.</td></tr>
             </tbody>
           </table>
+          <p><code>securityProfiles.light</code>, <code>balanced</code> and <code>strict</code> are starting points. Run <code>npm run bench:pow -- 20</code> from the repository and measure browser performance on your target devices.</p>
           <div class="callout callout-warn">
-            <strong>Tip:</strong> difficulty 4 with 50 challenges typically solves in
-            under a second on a modern device. Raise difficulty to 6–8 for stronger
-            protection at the cost of a longer wait.
+            <strong>Tip:</strong> benchmark presets on representative devices. Higher difficulty increases work; it does not guarantee a particular level of abuse protection.
           </div>
         </section>
 
@@ -349,7 +370,8 @@ app.post(<span class="c-str">"/api/verify"</span>, (req, res) =&gt; {
 
 <span class="c-comment">// Guard the form submission with the redeem token</span>
 app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
-  <span class="c-key">if</span> (!verifyToken(secret, req.body[<span class="c-str">"rootcap-token"</span>], { scope: <span class="c-str">"signup"</span> })) {
+  <span class="c-key">const</span> token = req.body?.[<span class="c-str">"rootcap-token"</span>];
+  <span class="c-key">if</span> (typeof token !== <span class="c-str">"string"</span> || !verifyToken(secret, token, { scope: <span class="c-str">"signup"</span> })) {
     <span class="c-key">return</span> res.status(<span class="c-str">403</span>).json({ error: <span class="c-str">"captcha failed"</span> });
   }
   <span class="c-comment">// Process the form…</span>
@@ -358,8 +380,9 @@ app.post(<span class="c-str">"/signup"</span>, (req, res) =&gt; {
 
 app.listen(<span class="c-str">3000</span>);</code></pre>
           <p>
-            The library is stateless — no database, no token store, no session
-            state — so it scales horizontally with any number of instances.
+            The default API is stateless and can share signing keys across instances.
+            Opt-in one-time verification requires an atomic consumption store shared
+            by every instance.
           </p>
         </section>
 
@@ -372,11 +395,9 @@ app.listen(<span class="c-str">3000</span>);</code></pre>
           </p>
           <pre class="code-block" data-file="formula"><code>SHA-256(salt + nonce)</code></pre>
           <p>
-            starts with at least <code>difficulty</code> zero bits. There is no
-            shortcut — the only way to find a valid nonce is to try values
-            sequentially until one works. A difficulty of 4 means roughly 1 in 16
+            starts with at least <code>difficulty</code> zero bits. A solver tries candidate nonces until one satisfies the target. A difficulty of 4 means roughly 1 in 16
             random nonces will succeed, so the expected number of attempts is small
-            enough to be instant for a real browser but wasteful for a bot sending
+            enough for lightweight configurations, while adding work to automation sending
             thousands of requests.
           </p>
           <p>
@@ -392,7 +413,7 @@ app.listen(<span class="c-str">3000</span>);</code></pre>
 
           <div class="faq-item">
             <h3>Is rootcap accessible?</h3>
-            <p>Yes. The widget is a single checkbox with proper ARIA attributes. There are no visual puzzles to solve, so it works with screen readers and keyboard navigation out of the box.</p>
+            <p>The widget supports keyboard interaction, accessible labels, live status, and native form validation. Test it with the assistive technologies and browsers your application supports.</p>
           </div>
           <div class="faq-item">
             <h3>Does it work without JavaScript?</h3>
@@ -400,15 +421,15 @@ app.listen(<span class="c-str">3000</span>);</code></pre>
           </div>
           <div class="faq-item">
             <h3>Can a bot still solve the challenges?</h3>
-            <p>A determined bot can solve proof-of-work challenges, but it costs them CPU time on every request. This raises the cost of abuse substantially without collecting any user data.</p>
+            <p>A determined bot can solve proof-of-work challenges, but it costs them CPU time on every request. It raises the cost of automation, but does not establish that the visitor is human. Combine it with rate limits and application checks.</p>
           </div>
           <div class="faq-item">
             <h3>Do I need a database?</h3>
-            <p>No. Challenge tokens are signed JWTs and redeem tokens are also signed JWTs. Everything is stateless. If you want replay prevention, you can add a nonce store (e.g. Redis) on top.</p>
+            <p>No. Challenge tokens are signed JWTs and redeem tokens are also signed JWTs. The default API is stateless. For one-time use, configure createProtection with a shared atomic store, such as the Redis adapter.</p>
           </div>
           <div class="faq-item">
             <h3>What is the widget size?</h3>
-            <p>The widget is under 6 KB minified with zero runtime dependencies. It loads instantly and has no impact on page weight.</p>
+            <p>The widget includes its solver and has no runtime dependencies. Measure the compressed output in your own build; size depends on bundling and compression.</p>
           </div>
         </section>
       </div>
@@ -421,21 +442,25 @@ app.listen(<span class="c-str">3000</span>);</code></pre>
     Boolean,
   ) as HTMLElement[];
 
+  let observer: IntersectionObserver | undefined;
   if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(
+    observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const id = entry.target.id;
             navLinks.forEach((link) => {
-              link.classList.toggle("active", link.getAttribute("data-target") === id);
+              const active = link.getAttribute("data-target") === id;
+              link.classList.toggle("active", active);
+              if (active) link.setAttribute("aria-current", "location");
+              else link.removeAttribute("aria-current");
             });
           }
         });
       },
       { rootMargin: "-80px 0px -70% 0px" },
     );
-    sectionEls.forEach((el) => observer.observe(el));
+    sectionEls.forEach((el) => observer!.observe(el));
   }
 
   // Mobile docs nav toggle
@@ -460,6 +485,43 @@ app.listen(<span class="c-str">3000</span>);</code></pre>
     });
   });
 
+  const search = app.querySelector<HTMLInputElement>("#docs-search")!;
+  const status = app.querySelector<HTMLElement>("#docs-search-status")!;
+  search.addEventListener("input", () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    let count = 0;
+    sectionEls.forEach((section) => {
+      const matches = !query || section.textContent!.toLocaleLowerCase().includes(query);
+      section.hidden = !matches;
+      if (matches) count++;
+      navLinks.forEach((link) => {
+        if (link.getAttribute("data-target") === section.id)
+          (link as HTMLElement).hidden = !matches;
+      });
+    });
+    status.textContent = query
+      ? count
+        ? `${count} matching sections`
+        : "No matching sections. Try a different term."
+      : "";
+  });
+  app.addEventListener("click", (event) => {
+    const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#docs-"]');
+    if (link && app.querySelector<HTMLElement>(link.hash)?.hidden) {
+      search.value = "";
+      search.dispatchEvent(new Event("input"));
+    }
+  });
+  app.querySelectorAll("table").forEach((table) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "docs-table-scroll";
+    wrapper.tabIndex = 0;
+    wrapper.setAttribute("role", "region");
+    wrapper.setAttribute("aria-label", "API reference table; scroll horizontally for more columns");
+    table.before(wrapper);
+    wrapper.append(table);
+  });
   // Add copy buttons to all code blocks
   addCopyButtons(app);
+  return () => observer?.disconnect();
 }

@@ -54,7 +54,7 @@ const post = (path, body) =>
 test("serves built assets and rejects invalid methods and paths", async () => {
   const response = await fetch(base + "/");
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /rootcap 1\.2 demo/);
+  assert.match(await response.text(), /rootcap 1\.3 demo/);
   assert.equal((await fetch(base + "/missing.js")).status, 404);
   assert.equal((await fetch(base + "/%E0%A4")).status, 400);
   const wrong = await post("/", {});
@@ -63,7 +63,7 @@ test("serves built assets and rejects invalid methods and paths", async () => {
 });
 test("serves the demo shell for extensionless routes while preserving API and asset 404s", async () => {
   const index = readFileSync(join(fixture, "dist", "index.html"), "utf8");
-  for (const path of ["/docs", "/dashboard", "/nested/client-route"]) {
+  for (const path of ["/docs", "/other-client-route", "/nested/client-route"]) {
     const res = await fetch(base + path);
     assert.equal(res.status, 200, path);
     assert.match(res.headers.get("content-type"), /^text\/html/);

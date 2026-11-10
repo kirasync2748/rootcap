@@ -13,10 +13,9 @@ npm run dev --prefix demo   # http://localhost:3001
 ```
 
 The script builds and packs rootcap, installs the resulting npm archive into the
-standalone demo, and checks that it is version 1.2.0. Run it again after changing
-the library. The `file:..` dependency is the local development fallback while
-1.2.0 is unpublished. After release, a new project can use
-`npm install rootcap@1.2.0` from the npm registry.
+standalone demo, and checks its version against the library. Run it again after
+changing the library. The `file:..` dependency supports development against this
+checkout. In your own application, install the package with `npm install rootcap`.
 
 ## Production smoke test
 
@@ -92,11 +91,11 @@ And dropped into the HTML form:
 
 ## Using rootcap in your own project
 
-Once rootcap 1.2.0 is published to npm, install it and the separately maintained
+Once rootcap 1.3.0 is published to npm, install it and the separately maintained
 Express framework used in this example:
 
 ```sh
-npm install rootcap@1.2.0 express
+npm install rootcap@1.3.0 express
 ```
 
 ### Server
@@ -133,17 +132,11 @@ app.listen(3000);
 
 ### Client
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:8accf2dda21ae0f831d98dd7fc1cec4efe1ae14d8330b3e32c9d26335a21166f -->
-
 Bundle the widget import with a tool such as Vite and serve the API and form
 from the same origin. If the API is on another origin, set the widget's
 `data-api` to the backend origin and enable CORS for the frontend origin,
 including the JSON POST preflight. Route the form's `action` to the application
 submission endpoint directly or through a proxy.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ```html
 <script type="module">

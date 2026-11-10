@@ -16,6 +16,7 @@
   <a href="https://rootcap.vercel.app/docs#docs-pow"><img src="https://img.shields.io/badge/Proof%20of%20Work-SHA--256-047857" alt="Proof of Work: SHA-256"></a>
   <a href="https://github.com/kirasync2748/rootcap/actions/workflows/publish.yml"><img src="https://github.com/kirasync2748/rootcap/actions/workflows/publish.yml/badge.svg" alt="Publish"></a>
   <a href="https://github.com/kirasync2748/rootcap/actions/workflows/ci.yml"><img src="https://github.com/kirasync2748/rootcap/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://socket.dev/npm/package/rootcap"><img src="https://socket.dev/api/badge/npm/package/rootcap" alt="Socket Security"></a>
 </p>
 
 ## Why rootcap?

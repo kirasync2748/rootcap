@@ -28,10 +28,8 @@ export function setupDemoForm(
   form.addEventListener("reset", resetFeedback, options);
   form.addEventListener(
     "rootcap:progress",
-    (event) => {
-      const { completed, total } = (event as CustomEvent<{ completed: number; total: number }>)
-        .detail;
-      status.textContent = `Solving challenges: ${completed} of ${total}.`;
+    () => {
+      status.textContent = "";
     },
     options,
   );

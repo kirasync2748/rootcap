@@ -641,6 +641,10 @@ a {
   line-height: 1.5;
 }
 
+.demo-form rootcap-widget::part(progress) {
+  display: none;
+}
+
 .form-row {
   margin-bottom: 22px;
 
@@ -724,6 +728,10 @@ a {
 .code-card {
   max-width: 720px;
   margin: 0 auto;
+
+  > p {
+    margin-top: 24px;
+  }
 }
 
 .dot {

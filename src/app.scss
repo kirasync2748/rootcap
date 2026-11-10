@@ -563,6 +563,12 @@ a {
   gap: 18px;
 }
 
+.how-note {
+  margin-top: 24px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
 .step {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -627,6 +633,12 @@ a {
   padding: 30px 26px;
   box-shadow: var(--shadow-lg);
   text-align: left;
+}
+
+.demo-form [data-verification-status] {
+  margin-bottom: 18px;
+  color: var(--ink-2);
+  line-height: 1.5;
 }
 
 .form-row {
@@ -1104,15 +1116,5 @@ a {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
-  }
-}
-
-.demo-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0;
-  > button {
-    flex: 1 1 140px;
   }
 }

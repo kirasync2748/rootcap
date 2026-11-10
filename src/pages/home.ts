@@ -114,7 +114,7 @@ export function renderHome(app: HTMLElement) {
             <p>Solutions are checked against the signed token. Your server must check the short-lived redeem token when the form is submitted.</p>
           </li>
         </ol>
-        <p>Proof of work raises the cost of automation; it does not identify a person. Apply rate limits and verify tokens on the server.</p>
+        <p class="how-note">Proof of work raises the cost of automation; it does not identify a person. Apply rate limits and verify tokens on the server.</p>
       </div>
     </section>
 
@@ -134,10 +134,6 @@ export function renderHome(app: HTMLElement) {
             <p class="verification-error" id="demo-verify-error" role="alert"></p>
           </div>
           <p data-verification-status role="status" aria-live="polite"></p>
-          <div class="demo-controls">
-            <button type="button" class="btn btn-ghost" data-cancel-verification>Cancel verification</button>
-            <button type="button" class="btn btn-ghost" data-reset-verification>Reset verification</button>
-          </div>
           <button type="submit" class="btn btn-primary btn-block">Submit</button>
         </form>
         <div class="demo-result" id="demo-result" hidden>

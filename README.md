@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/rootcap"><img src="https://img.shields.io/npm/v/rootcap" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/rootcap"><img src="https://img.shields.io/npm/dm/rootcap" alt="npm downloads per month"></a>
+  <a href="https://www.npmjs.com/package/rootcap"><img src="https://img.shields.io/npm/dt/rootcap" alt="npm downloads"></a>
   <a href="https://rootcap.vercel.app/docs#docs-intro"><img src="https://img.shields.io/badge/Privacy-First-047857" alt="Privacy First"></a>
   <a href="https://www.npmjs.com/package/rootcap"><img src="https://img.shields.io/badge/Dependencies-Zero-047857" alt="Zero runtime dependencies"></a>
   <a href="https://rootcap.vercel.app/docs#docs-pow"><img src="https://img.shields.io/badge/Proof%20of%20Work-SHA--256-047857" alt="Proof of Work: SHA-256"></a>

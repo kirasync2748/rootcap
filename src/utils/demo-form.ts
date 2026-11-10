@@ -5,9 +5,6 @@ export function setupDemoForm(
   tokenOut: HTMLElement,
   error: HTMLElement,
 ) {
-  const widget = form.querySelector<HTMLElement & { cancel(): void; reset(): void }>(
-    "rootcap-widget",
-  )!;
   const status = form.querySelector<HTMLElement>("[data-verification-status]")!;
   const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   const listeners = new AbortController();
@@ -67,17 +64,6 @@ export function setupDemoForm(
     },
     options,
   );
-  form.querySelector("[data-cancel-verification]")!.addEventListener(
-    "click",
-    () => {
-      widget.cancel();
-      status.textContent = "Verification cancelled. You can start again.";
-    },
-    options,
-  );
-  form
-    .querySelector("[data-reset-verification]")!
-    .addEventListener("click", () => widget.reset(), options);
   form.addEventListener(
     "submit",
     async (event) => {
